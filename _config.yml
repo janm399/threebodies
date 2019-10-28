@@ -8,9 +8,11 @@ baseurl: "" # the subpath of your site, e.g. /blog
 url: "https://threebodies.tech"
 # twitter_username: jekyllrb
 github_username:  janm399
+social-linkedin: https://www.linkedin.com/in/janm399/
+social-email: jan.machacek@gmail.com
 
 # Build settings
-theme: jekyll-theme-hacker
+#theme: jekyll-theme-hacker
 #remote_theme: victorvoid/space-jekyll-template
 plugins:
   - jekyll-feed
@@ -25,3 +27,12 @@ kramdown:
   math_engine: mathjax
   syntax_highlighter: rouge
 
+plugins:
+  - jekyll-sitemap
+  - jekyll-paginate
+  - jemoji
+
+paginate: 8
+paginate_path: "/page/:num"
+
+exclude: ["node_modules", "gulpfile.js", "package.json", "yarn.lock"]
