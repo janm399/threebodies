@@ -11,9 +11,10 @@ github_username:  janm399
 
 # Build settings
 #theme: minima
-remote_theme: nielsenramon/chalk
+remote_theme: victorvoid/space-jekyll-template
 plugins:
   - jekyll-feed
+  - 
 
 lsi: false
 safe: true
