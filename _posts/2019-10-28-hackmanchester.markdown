@@ -22,10 +22,9 @@ TODO：更细节得描述电路构建，加上发光二极管、红外传感器�
 
 ![第二版](/assets/2019-10-28-hackmanchester/step1.jpeg){:class="img-responsive"}
 
-当然，还需要给MCU跑固件：多亏ESP8266和ESP32的编译器的C++ implementation，除了一些最新对象、算法
+当然，还需要给MCU跑固件：多亏ESP8266和ESP32的编译器是比较现代的C++标准，除了一些最新对象、算法
 （比如`std::optional`、[structured bindings](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0217r3.html)）
-以外，我们还可以靠许多C++ `std` namespace里的东西。TODO：???
-
+以外，我们还可以靠许多C++ `std` namespace里的东西。TODO：干嘛？
 
 所以，写固件的时候应该按照一般“clean code”的规则，尤其加上仔细的测试。不过，拿利用些MCU里的硬件的功能的代码来说，
 在x86处理器进行下到底怎么来写细节测试代码？比如，我们靠`<SoftwareSerial>`来连接GSM配件，就算你的用x86处理器的
