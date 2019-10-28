@@ -30,7 +30,8 @@ url: "https://threebodies.tech"
 github_username:  janm399
 
 # Build settings
-theme: minima
+#theme: minima
+remote_theme: chrisbobbe/jekyll-theme-prologue
 plugins:
   - jekyll-feed
 
