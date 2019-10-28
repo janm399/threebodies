@@ -10,11 +10,10 @@ url: "https://threebodies.tech"
 github_username:  janm399
 
 # Build settings
-#theme: minima
-remote_theme: victorvoid/space-jekyll-template
+theme: jekyll-theme-hacker
+#remote_theme: victorvoid/space-jekyll-template
 plugins:
   - jekyll-feed
-  - 
 
 lsi: false
 safe: true
@@ -26,4 +25,3 @@ kramdown:
   math_engine: mathjax
   syntax_highlighter: rouge
 
-theme: jekyll-theme-hacker
