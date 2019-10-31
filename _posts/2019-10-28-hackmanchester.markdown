@@ -26,7 +26,7 @@ TODO：更细节得描述电路构建，加上发光二极管、红外传感器�
 （比如`std::optional`、`std::tie`等等）以外，我们还可以靠许多C++ `std` namespace里的东西。TODO：干嘛？
 
 所以，写固件的时候应该按照一般“clean code”的规则，尤其加上仔细的测试。不过，拿利用些MCU里的硬件的功能的代码来说，
-在x86处理器进行下到底怎么来写细节的测试代码？比如，我们靠`<SoftwareSerial>`来连接GSM配件，就算你的用x86处理器的
+在x86处理器进行下到底怎么来写细节的测试代码？比如，我们靠`SoftwareSerial`来连接GSM配件，就算你的用x86处理器的
 电脑有这么古老串行端口，写x86测试代码肯定会出”works on my machine“，可是并不在MCU跑的这种的问题。
 
 {% highlight C++ %}
