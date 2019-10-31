@@ -103,3 +103,16 @@ extern "C" int main(int, char **) {
     return 0;
 }
 {% endhighlight %}
+
+显然，调查`get_writes()`，返回`std::vector<std::string>`的方法很麻烦；更方便的是加上一种控制接口；把它实现在`SoftwareSerial`与`software_serial_mock`，结果：
+
+{% highlight C++ %}
+class software_serial_control {
+public:
+    virtual void wait_rx(const std::string write, 
+                         const std::chrono::duration<uint, std::milli> timeout) = 0;
+    virtual void tx(const std::string tx) = 0;
+    virtual void add_auto_rxtx(const std::string request, const std::string response) = 0;
+    virtual void set_blocking(const bool blocking) = 0;
+};
+{% endhighlight %}
