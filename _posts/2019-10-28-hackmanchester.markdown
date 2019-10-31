@@ -109,10 +109,12 @@ extern "C" int main(int, char **) {
 {% highlight C++ %}
 class software_serial_control {
 public:
-    virtual void wait_rx(const std::string write, 
-                         const std::chrono::duration<uint, std::milli> timeout) = 0;
+    virtual void rx(const std::string rx, 
+                    const std::chrono::duration<uint, std::milli> timeout) = 0;
     virtual void tx(const std::string tx) = 0;
-    virtual void add_auto_rxtx(const std::string request, const std::string response) = 0;
+    virtual void add_auto_rxtx(const std::string request, 
+                               const std::string response,
+                               const std::chrono::duration<uint, std::milli> timeout) = 0;
     virtual void set_blocking(const bool blocking) = 0;
 };
 {% endhighlight %}
