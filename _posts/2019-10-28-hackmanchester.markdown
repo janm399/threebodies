@@ -17,6 +17,7 @@ hidden: true
 
 ## 电路设计
 ![基础电路构建](/assets/2019-10-28-hackmanchester/b0.png){:class="img-responsive"}
+*电路设计*
 
 这个电路包括五个独立配件：
 * (1) 项目核心是8266MCU部件—虽然它没有足够输出，但是还合适这个比较简单的hack，
@@ -32,26 +33,73 @@ hidden: true
 ![第二版](/assets/2019-10-28-hackmanchester/step1.jpeg){:class="img-responsive"}
 
 ## 软件设计
-当然，还需要给MCU跑固件：多亏ESP8266和ESP32的编译器是比较现代的C++标准，除了一些最新对象、算法
-（比如`std::optional`、`std::tie`等等）以外，我们还可以靠许多C++ `std` namespace里的东西。TODO：干嘛？
+当然，还需要给MCU跑固件：多亏[PlatformIO]()中的ESP8266和ESP32包括现代C++编译器（ESP32是编译器是支持C++17的，ESP8266只是实现C++11的），我们很容易就可以利用现代C++标准的方法。
 
-所以，写固件的时候应该按照一般“clean code”的规则，尤其加上仔细的测试。不过，拿利用些MCU里的硬件的功能的代码来说，
-在x86处理器进行下到底怎么来写细节的测试代码？比如，我们靠`SoftwareSerial`来连接GSM配件，就算你的用x86处理器的
-电脑有这么古老串行端口，写x86测试代码肯定会出”works on my machine“，可是并不在MCU跑的这种的问题。
+所以，写固件的时候应该按照所有“clean code”的规则，尤其加上仔细的测试。不过，拿利用些硬件的功能来说，在x86处理器进行下到底怎么来写细节的测试代码？比如，我们靠`SoftwareSerial`来连接GSM配件，就算你的用x86_64处理器的电脑有这么古老串行端口。你写好x86_64测试代码之后把它进行在这么快处理器跑肯定会出”works on my machine“，可是并不在MCU这样的问题。我们可以下载一些虚拟硬件的库，不幸的是这些库一般指支持根本Arduino固件，为了来测试更复杂接口、更复杂MCU能力，我们不得不需要自己写这种虚拟硬件库。
+
+从我们的[GitHub版本库](https://github.com/teroxik/hackmanchester2019-hw)举一个例子：怎么虚拟`SoftwareSerial`，然后怎么来使用这个虚拟`SoftwareSerial`？
 
 {% highlight C++ %}
-// 普通C++ stdlib内存机器，没问题
-#include <memory> 
-// 靠MCU里的的硬件机器之一，显然有问题
-#include <SoftwareSerial.h>
-
-class transport {
-private:
-    SoftwareSerial serial; // ！！！
-    
+class SoftwareSerial {
 public:
-    void begin(); // 想象方法的实践利用serial字段
+    void println(const char *);
+    //...
+}
+{% endhighlight %}
+
+那么，`SoftwareSerial`是在Arduino固件包括的，x86_64并不包括Arduino固件；当然，可以很容易地自己写一个x86_64实现，比如：
+
+{% highlight C++ %}
+class SoftwareSerial {
+private:
+    std::vector<std::string> writes;
+
+public:
+    void println(const char *line) { writes.push_back(std::string(line)); }
+}
+{% endhighlight %}
+
+到目前为止一切顺利吧，不过怎么加上测试中的expectations，固件代码不类似于利用dependency injection的代码。我们代码一般直接地构建`SoftwareSerial`对象。好在使用对象`SoftwareSerial`靠它的`begin(...)`方法；从而，我们虚拟实现只需要提供合适地实现`begin(...)`方法。
+
+{% highlight C++ %}
+class SoftwareSerial {
+public:
+    void begin(int baud, int rx_pin, int tx_pin) {
+        software_serial_mock::instance().add(this, baud, rx_pin, tx_pin);
+    }
+}
+{% endhighlight %}
+
+这里，`software_serial_mock`是控制虚拟`SoftwareSerial`的接口，每次我们的固件调用`SoftwareSerial.begin(...)`，我们把刚刚调用`SoftwareSerial`对象放在`software_serial_mock`里。
+
+{% highlight C++ %}
+class software_serial_mock {
+private:
+    std::vector<std::tuple<int, int, int, SoftwareSerial *>> mock_instances;
+
+public:
+    void add(SoftwareSerial *instance, const int baud, const int rx_pin, const int tx_pin) {
+        mock_instances.push_back(std::make_tuple(baud, rx_pin, tx_pin, instance));
+    }
+    SoftwareSerial *get(const int rx_pin) const;
 };
 {% endhighlight %}
 
-....
+最简单来说，`software_serial_mock`是一种版本库，我们写测试代码一般会调用这个版本库中`get`方法为了搜索`SoftwareSerial`对象。
+
+{% highlight C++ %}
+void test_xxx() {
+    transport t;
+    t.loop();
+
+    auto writes = software_serial_mock::instance().get(pins::sms_rx)->get_writes();
+    // 调查writes里有没有对的质量
+}
+
+extern "C" int main(int, char **) {
+    UNITY_BEGIN();
+    RUN_TEST(test_xxx);
+    UNITY_END();
+    return 0;
+}
+{% endhighlight %}
