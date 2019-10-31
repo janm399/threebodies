@@ -76,7 +76,7 @@ $font-family-headings     : if(get_font_family('headings'), (get_font_family('he
 $font-family-posts        : $font-family-base;
 $font-family-posts        : if(get_font_family('posts'), (get_font_family('posts'), $font-family-base), $font-family-posts);
 
-$font-family-monospace    : consolas, Menlo, $font-family-chinese, monospace;
+$font-family-monospace    : Ubuntu Mono derivative Powerline Regular, Ubuntu Mono, consolas, Menlo, $font-family-chinese, monospace;
 $font-family-monospace    : if(get_font_family('codes'), (get_font_family('codes'), consolas, Menlo, $font-family-chinese, monospace), $font-family-monospace);
 
 $font-family-icons        : 'FontAwesome';
@@ -96,7 +96,7 @@ $font-size-small          : $font-size-base - 2px;
 $font-size-smaller        : $font-size-base - 4px;
 $font-size-large          : $font-size-base + 2px;
 $font-size-larger         : $font-size-base + 4px;
-
+$font-size-code           : $font-size-base + 2px;
 
 // Headings font size
 $font-size-headings-step    : 2px;
@@ -142,7 +142,7 @@ $table-row-hover-bg-color       : $whitesmoke;
 // Code & Code Blocks
 // --------------------------------------------------
 $code-font-family               : $font-family-monospace;
-$code-font-size                 : 13px;
+$code-font-size                 : $font-size-code;
 $code-font-size                 : if(type-of(jekyll-config('font.codes.size')) == 'number', jekyll-config('font.codes.size') + px, $code-font-size);
 $code-border-radius             : 3px;
 $code-foreground                : $black-light;
