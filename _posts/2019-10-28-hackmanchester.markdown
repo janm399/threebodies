@@ -1,8 +1,8 @@
 ---
 layout: post
-title:  "Hack Manchester挑战：硬件"
+title:  "Hack Manchester挑战"
 date:   2019-10-28 15:23:44 +0000
-categories: [Hardware]
+categories: [HW, SW]
 hidden: true
 ---
 这个周末，Three Bodies参加了一个[Hack Manchester](https://www.hac100.com/event/HM2019/)的hackathon；25个小时为了弄
@@ -41,21 +41,22 @@ hidden: true
 
 {% highlight C++ %}
 class SoftwareSerial {
-public:
-    void println(const char *);
-    //...
+ public:
+  void println(const char *);
+  //...
 }
 {% endhighlight %}
 
 那么，`SoftwareSerial`是在Arduino固件包括的，x86_64并不包括Arduino固件；当然，可以很容易地自己写一个x86_64实现，比如：
 
 {% highlight C++ %}
+using namespace std;
 class SoftwareSerial {
-private:
-    std::vector<std::string> writes;
+ private:
+  vector<string> writes;
 
-public:
-    void println(const char *line) { writes.push_back(std::string(line)); }
+ public:
+  void println(const char *line) { writes.push_back(string(line)); }
 }
 {% endhighlight %}
 
@@ -63,25 +64,26 @@ public:
 
 {% highlight C++ %}
 class SoftwareSerial {
-public:
-    void begin(int baud, int rx_pin, int tx_pin) {
-        software_serial_mock::instance().add(this, baud, rx_pin, tx_pin);
-    }
+ public:
+  void begin(int baud, int rx_pin, int tx_pin) {
+    software_serial_mock::instance().add(this, baud, rx_pin, tx_pin);
+  }
 }
 {% endhighlight %}
 
 这里，`software_serial_mock`是控制虚拟`SoftwareSerial`的接口，每次我们的固件调用`SoftwareSerial.begin(...)`，我们把刚刚调用`SoftwareSerial`对象放在`software_serial_mock`里。
 
 {% highlight C++ %}
+using namespace std;
 class software_serial_mock {
-private:
-    std::vector<std::tuple<int, int, int, SoftwareSerial *>> mock_instances;
+ private:
+   vector<tuple<int, int, int, SoftwareSerial *>> mock_instances;
 
-public:
-    void add(SoftwareSerial *instance, const int baud, const int rx_pin, const int tx_pin) {
-        mock_instances.push_back(std::make_tuple(baud, rx_pin, tx_pin, instance));
-    }
-    SoftwareSerial *get(const int rx_pin) const;
+ public:
+  void add(SoftwareSerial *instance, const int baud, const int rx_pin, const int tx_pin) {
+    mock_instances.push_back(make_tuple(baud, rx_pin, tx_pin, instance));
+  }
+  SoftwareSerial *get(const int rx_pin) const;
 };
 {% endhighlight %}
 
@@ -89,32 +91,33 @@ public:
 
 {% highlight C++ %}
 void test_xxx() {
-    transport t;
-    t.loop();
+  transport t;
+  t.loop();
 
-    auto writes = software_serial_mock::instance().get(pins::sms_rx)->get_writes();
-    // 调查writes里有没有对的质量
+  auto writes = software_serial_mock::instance().get(pins::sms_rx)->get_writes();
+  // 调查writes里有没有对的质量
 }
 
 extern "C" int main(int, char **) {
-    UNITY_BEGIN();
-    RUN_TEST(test_xxx);
-    UNITY_END();
-    return 0;
+  UNITY_BEGIN();
+  RUN_TEST(test_xxx);
+  UNITY_END();
+  return 0;
 }
 {% endhighlight %}
 
 显然，调查`get_writes()`，返回`std::vector<std::string>`的方法很麻烦；更方便的是加上一种控制接口；把它实现在`SoftwareSerial`与`software_serial_mock`，结果：
 
 {% highlight C++ %}
+using namespace std;
 class software_serial_control {
-public:
-    virtual void rx(const std::string rx, 
-                    const std::chrono::duration<uint, std::milli> timeout) = 0;
-    virtual void tx(const std::string tx) = 0;
-    virtual void add_auto_rxtx(const std::string request, 
-                               const std::string response,
-                               const std::chrono::duration<uint, std::milli> timeout) = 0;
-    virtual void set_blocking(const bool blocking) = 0;
+ public:
+  virtual void rx(const string rx, 
+                  const chrono::duration<uint, milli> timeout) = 0;
+  virtual void tx(const string tx) = 0;
+  virtual void add_auto_rxtx(const string request, 
+                             const string response,
+                             const chrono::duration<uint, milli> timeout) = 0;
+  virtual void set_blocking(const bool blocking) = 0;
 };
 {% endhighlight %}
