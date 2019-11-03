@@ -42,7 +42,7 @@ hidden: true
 {% highlight C++ %}
 class SoftwareSerial {
  public:
-  void println(const char *);
+  void println(char *);
   //...
 }
 {% endhighlight %}
@@ -56,7 +56,7 @@ class SoftwareSerial {
   vector<string> writes;
 
  public:
-  void println(const char *line) { writes.push_back(string(line)); }
+  void println(char *line) { writes.push_back(string(line)); }
 }
 {% endhighlight %}
 
@@ -80,7 +80,7 @@ class software_serial_mock {
    vector<tuple<int, int, int, SoftwareSerial *>> mock_instances;
 
  public:
-  void add(SoftwareSerial *instance, const int baud, const int rx_pin, const int tx_pin) {
+  void add(SoftwareSerial *instance, int baud, int rx_pin, int tx_pin) {
     mock_instances.push_back(make_tuple(baud, rx_pin, tx_pin, instance));
   }
   SoftwareSerial *get(const int rx_pin) const;
@@ -106,18 +106,18 @@ extern "C" int main(int, char **) {
 }
 {% endhighlight %}
 
-显然，调查`get_writes()`，返回`std::vector<std::string>`的方法很麻烦；更方便的是加上一种控制接口；把它实现在`SoftwareSerial`与`software_serial_mock`，结果：
+显然，调查`get_writes()`，返回`std::vector<std::string>`的方法很麻烦；更方便的是加上一种控制接口；把它实现在`SoftwareSerial`与`software_serial_mock`，如下例所示：
 
 {% highlight C++ %}
 using namespace std;
 class software_serial_control {
  public:
-  virtual void rx(const string rx, 
-                  const chrono::duration<uint, milli> timeout) = 0;
-  virtual void tx(const string tx) = 0;
-  virtual void add_auto_rxtx(const string request, 
-                             const string response,
-                             const chrono::duration<uint, milli> timeout) = 0;
-  virtual void set_blocking(const bool blocking) = 0;
+  virtual void rx(string rx, 
+                  chrono::duration<uint, milli> timeout) = 0;
+  virtual void tx(string tx) = 0;
+  virtual void add_auto_rxtx(string request, 
+                             string response,
+                             chrono::duration<uint, milli> timeout) = 0;
+  virtual void set_blocking(bool blocking) = 0;
 };
 {% endhighlight %}
