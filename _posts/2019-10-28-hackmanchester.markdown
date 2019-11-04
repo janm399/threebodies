@@ -28,12 +28,75 @@ hidden: true
 
 再说，另一个重点是SIM800L部件需要3.7-4.1V电源，从8266可以获得的3.3V电源是完全无法利用的。一开始我们决定了利用这个3.3V电源，SIM800L好像没有问题，可是接不上GSM服务。我们在把它调试的时候，我们注意到SIM800L纷纷发出`SMS Ready`，接下来`Call Ready`，然后（我们估计为了电源电压太低）被重启了。注意，SIM800L最大电流需求上2A，从而，我们不得不加上了一个高电流的电压稳压器[MIC29150](http://www.farnell.com/datasheets/94451.pdf)。
 
-![第一版](/assets/2019-10-28-hackmanchester/step0.jpeg){:class="img-responsive"}
-
-![第二版](/assets/2019-10-28-hackmanchester/step1.jpeg){:class="img-responsive"}
-
 ## 软件设计
-当然，还需要给MCU跑固件：多亏[PlatformIO]()中的ESP8266和ESP32包括现代C++编译器（ESP32是编译器是支持C++17的，ESP8266只是实现C++11的），我们很容易就可以利用现代C++标准的方法。
+当然，还需要构建MCU固件。首先我们需要决定我们写的固件是要哪一个框架的，现代许多人使用Arduino框架。虽然Arduino现在丰富大数开源软件库、扩展，但对与习惯于“大电脑、大处理器”开发者来说，Arduino框架看似老旧DOS操作系统。（我认为是因为Arduino框架支持个个MCU平台、个个处理器，从而它只包括最基础feature。）假如没有ESP32这种大功率的MCU，Arduino确实很合适。然而，为了利用所有ESP32的features，我们最好使用[ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/latest/index.html)框架，特别是因为ESP-IDF支持FreeRTOS，开源实时操作系统。因为FreeRTOS志确实操作系统，我们可以用我们从“大电脑”习惯的软件构建方式。简单来说，我们该将应用分开成独立模块，然后使用消息队列把这些模块链接在一起。最重要的是，我们写的模块里的代码看似一般无限循环（请注意，除了IRQ处理的函数意外，这样靠无限循的模块在Arduino都不能执行，因为Arduino只有一个循环，我们需要在这个循环办理一切。）
+
+看[ESP-IDF 快速入门](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/get-started/index.html)看似很复杂，不过好在有另一个办法：PlatformIO。如下两个源码所示，为了设置一个用ESP-IDF的PlatformIO项目只需要进行一个命令，编辑一个文件。
+
+{% highlight shell %}
+$ platformio init
+{% endhighlight %}
+
+{% highlight ini linenos %} 
+[common]
+lib_deps =
+    
+[env:esp32]
+platform = espressif32
+board = esp32dev
+framework = espidf
+debug_tool = olimex-arm-usb-ocd-h
+upload_port = /dev/cu.SLAB_USBtoUART
+monitor_port = /dev/cu.SLAB_USBtoUART
+monitor_speed = 115200
+upload_speed = 230400
+lib_deps =
+    ${common.lib_deps}
+build_unflags = -std=gnu++11
+build_flags =
+    -std=c++17
+
+[env:native]
+platform = native
+targets = test
+lib_extra_dirs = src
+test_build_project_src = true
+build_flags =
+    -std=c++17
+    -I test_include
+{% endhighlight %}
+
+如上`platform.ini`所述，我们项目包括两个环境：`esp32`和`native`。`esp32`环境一方面描述怎么来编译ESP32的代码，`native`环境一方面提供很方便方法来测试平台无关的代码。我没开始实现我们的项目以前，应该首先查看是否我们刚刚设置PlatformIO会把项目编译好。请注意`esp32`环境里的`framework = espidf`，这个行告诉PlatformIO该用哪一个平台来编译代码，其他要注意的参数是`build_flags`，特别的`-std=c++17`，这样我们可以靠C++17的feature。即然大家以`blink`为古典款Arduino项目，我们也该来实现一个利用ESP-IDF/FreeRTOS的、利用现代C++的版。
+
+{% highlight C++ %}
+// 保存在$HOME/src/main.cpp
+
+#include <driver/gpio.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include "sdkconfig.h"
+
+#define BLINK_GPIO GPIO_NUM_5
+
+extern "C" void app_main(void) {
+  gpio_pad_select_gpio(BLINK_GPIO);
+  gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
+  while (1) {
+    gpio_set_level(BLINK_GPIO, 0);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    gpio_set_level(BLINK_GPIO, 1);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+  }
+}
+{% endhighlight %}
+
+在[Visual Studio Code]()，打开PlatformIO扩展后执行`env:esp32 > Upload and Monitor`命令。
+
+大遗憾是ESP32不包括builtin-LED，所以为了查看
+
+上面代码所示是一个跟Arduino古典`blink`一样的概念，唯一区别是ESP-IDF没有Arduino中的两个函数`setup`和`loop`，ESP-IDF只有一个函数需要实现，想象这个函数是Linux中的`init`编程。Linux核型启动的时候，它也执行`init`编程，然后`init`负责处理剩下的启动过程。
+
+多亏[PlatformIO]()中ESP32工具链包括现代C++编译器（是编译器是支持C++17的！），我们很容易就可以利用现代C++标准的方法。使用ESP32
 
 所以，写固件的时候应该按照所有“clean code”的规则，尤其加上仔细的测试。不过，拿利用些硬件的功能来说，在x86处理器进行下到底怎么来写细节的测试代码？比如，我们靠`SoftwareSerial`来连接GSM配件，就算你的用x86_64处理器的电脑有这么古老串行端口。你写好x86_64测试代码之后把它进行在这么快处理器跑肯定会出”works on my machine“，可是并不在MCU这样的问题。我们可以下载一些虚拟硬件的库，不幸的是这些库一般指支持根本Arduino固件，为了来测试更复杂接口、更复杂MCU能力，我们不得不需要自己写这种虚拟硬件库。
 
@@ -71,7 +134,7 @@ class SoftwareSerial {
 }
 {% endhighlight %}
 
-如下例所示，`software_serial_mock`是控制虚拟`SoftwareSerial`的接口，每次我们的固件调用`SoftwareSerial.begin(...)`，我们把刚刚调用`SoftwareSerial`对象放在`software_serial_mock`里。最简单来说，`software_serial_mock`是一种版本库，我们写测试代码一般会调用这个版本库中`get`方法为了获取`SoftwareSerial`对象。请注意，在production环境下，`get`方法应该是返回`optional`值；不过这里`get`只是返回`SoftwareSerial`指针或者--当找不到匹配的`SoftwareSerial`--`nullptr`的。
+如下源码所示，`software_serial_mock`是控制虚拟`SoftwareSerial`的接口，每次我们的固件调用`SoftwareSerial.begin(...)`，我们把刚刚调用`SoftwareSerial`对象放在`software_serial_mock`里。最简单来说，`software_serial_mock`是一种版本库，我们写测试代码一般会调用这个版本库中`get`方法为了获取`SoftwareSerial`对象。请注意，在production环境下，`get`方法应该是返回`optional`值；不过这里`get`只是返回`SoftwareSerial`指针或者--当找不到匹配的`SoftwareSerial`--`nullptr`的。
 
 {% highlight C++ %}
 using namespace std;
