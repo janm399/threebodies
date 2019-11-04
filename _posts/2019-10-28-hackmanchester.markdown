@@ -71,7 +71,7 @@ class SoftwareSerial {
 }
 {% endhighlight %}
 
-这里，`software_serial_mock`是控制虚拟`SoftwareSerial`的接口，每次我们的固件调用`SoftwareSerial.begin(...)`，我们把刚刚调用`SoftwareSerial`对象放在`software_serial_mock`里。
+如下例所示，`software_serial_mock`是控制虚拟`SoftwareSerial`的接口，每次我们的固件调用`SoftwareSerial.begin(...)`，我们把刚刚调用`SoftwareSerial`对象放在`software_serial_mock`里。最简单来说，`software_serial_mock`是一种版本库，我们写测试代码一般会调用这个版本库中`get`方法为了获取`SoftwareSerial`对象。请注意，在production环境下，`get`方法应该是返回`optional`值；不过这里`get`只是返回`SoftwareSerial`指针或者--当找不到匹配的`SoftwareSerial`--`nullptr`的。
 
 {% highlight C++ %}
 using namespace std;
@@ -81,13 +81,13 @@ class software_serial_mock {
 
  public:
   void add(SoftwareSerial *instance, int baud, int rx_pin, int tx_pin) {
-    mock_instances.push_back(make_tuple(baud, rx_pin, tx_pin, instance));
+    mock_instances.emplace_back(make_tuple(baud, rx_pin, tx_pin, instance));
   }
   SoftwareSerial *get(const int rx_pin) const;
 };
 {% endhighlight %}
 
-最简单来说，`software_serial_mock`是一种版本库，我们写测试代码一般会调用这个版本库中`get`方法为了搜索`SoftwareSerial`对象。
+XXX
 
 {% highlight C++ %}
 void test_xxx() {
