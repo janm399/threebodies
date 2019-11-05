@@ -15,20 +15,7 @@ hidden: true
 
 自然，我们设计的系统并不是完全可靠的，我们只想证明这种系统是能建构的，而我们想探索些新部件、新编程语言和平台。
 
-## 电路设计
-![基础电路构建](/assets/2019-10-28-hackmanchester/b0.png){:class="img-responsive"}
-*电路设计*
-
-这个电路包括五个独立配件：
-* (1) 项目核心是8266MCU部件—虽然它没有足够输出，但是还合适这个比较简单的hack，
-* (2) 为了把项目连接上GSM网络，我们使用SIM800L GSM部件，与大家都习惯的相反，它使用“古代”串行接口，
-* (3), (3ʹ) 每一个药盒子都包括三个LED，两个发看得见光的，一个发红外光的；另外，每一个药盒子有感红外的传感器，
-* (4) 为了表示通知，我们用最简单方法：LED，
-* (5) 最后，我们需要加上三个按钮，可是8266没有足够输入脚，只剩下一个模拟输入；因此，我们不得不需要加上电压分配，然后利用MCU中的A0脚（我们承认是个该死的hack）。
-
-再说，另一个重点是SIM800L部件需要3.7-4.1V电源，从8266可以获得的3.3V电源是完全无法利用的。一开始我们决定了利用这个3.3V电源，SIM800L好像没有问题，可是接不上GSM服务。我们在把它调试的时候，我们注意到SIM800L纷纷发出`SMS Ready`，接下来`Call Ready`，然后（我们估计为了电源电压太低）被重启了。注意，SIM800L最大电流需求上2A，从而，我们不得不加上了一个高电流的电压稳压器[MIC29150](http://www.farnell.com/datasheets/94451.pdf)。
-
-## 软件设计
+## 固件设计
 当然，还需要构建MCU固件。首先我们需要决定我们写的固件是要哪一个框架的，现代许多人使用Arduino框架。虽然Arduino现在丰富大数开源软件库、扩展，但对与习惯于“大电脑、大处理器”开发者来说，Arduino框架看似老旧DOS操作系统。（我认为是因为Arduino框架支持个个MCU平台、个个处理器，从而它只包括最基础feature。）假如没有ESP32这种大功率的MCU，Arduino确实很合适。然而，为了利用所有ESP32的features，我们最好使用[ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/latest/index.html)框架，特别是因为ESP-IDF支持FreeRTOS，开源实时操作系统。因为FreeRTOS志确实操作系统，我们可以用我们从“大电脑”习惯的软件构建方式。简单来说，我们该将应用分开成独立模块，然后使用消息队列把这些模块链接在一起。最重要的是，我们写的模块里的代码看似一般无限循环（请注意，除了IRQ处理的函数意外，这样靠无限循的模块在Arduino都不能执行，因为Arduino只有一个循环，我们需要在这个循环办理一切。）
 
 看[ESP-IDF 快速入门](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/get-started/index.html)看似很复杂，不过好在有另一个办法：PlatformIO。如下两个源码所示，为了设置一个用ESP-IDF的PlatformIO项目只需要进行一个命令，编辑一个文件。
@@ -90,7 +77,59 @@ extern "C" void app_main(void) {
 }
 {% endhighlight %}
 
+当然还剩下电路，可是从上面源码看来，电路也该是特别古典的：只要一个ESP（开发）版、一个电阻器、一个LED即可，看于下面的电路图。
+
+![古典电路](/assets/2019-10-28-hackmanchester/blink-sch.png){:class="img-responsive"}
+
+硬件修好了后，到点该第一次来把项目编译、上传、执行。输入`platformio run -e esp32 -t upload`命令后，为了核实编译、上传过程成功了，应该观察`platformio run`输出中的`success`，更重要的是该观察是否LED确实在闪烁。
+
+{% highlight shell %}
+$ platformio run -e esp32 -t upload
+Processing esp32 (platform: espressif32; board: esp32dev; framework: espidf)
+-----------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/esp32dev.html
+...
+Use manually specified: /dev/cu.SLAB_USBtoUART
+Uploading .pio/build/esp32/firmware.bin
+esptool.py v2.6
+Serial port /dev/cu.SLAB_USBtoUART
+Connecting........___
+Chip is ESP32D0WDQ5 (revision 1)
+...
+Writing at 0x00020000... (100 %)
+Wrote 155920 bytes (78135 compressed) at 0x00010000 in 3.5 seconds...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...
+
+Environment    Status    Duration
+-------------  --------  ------------
+esp32          SUCCESS   00:00:24.405
+native         IGNORED
+$
+{% endhighlight %}
+
+![古典blink在进行](/assets/2019-10-28-hackmanchester/blink-hw.jpeg){:class="img-responsive"}
+
 在[Visual Studio Code]()，打开PlatformIO扩展后执行`env:esp32 > Upload and Monitor`命令。
+
+
+## 电路设计
+![基础电路构建](/assets/2019-10-28-hackmanchester/b0.png){:class="img-responsive"}
+*电路设计*
+
+这个电路包括五个独立配件：
+* (1) 项目核心是8266MCU部件—虽然它没有足够输出，但是还合适这个比较简单的hack，
+* (2) 为了把项目连接上GSM网络，我们使用SIM800L GSM部件，与大家都习惯的相反，它使用“古代”串行接口，
+* (3), (3ʹ) 每一个药盒子都包括三个LED，两个发看得见光的，一个发红外光的；另外，每一个药盒子有感红外的传感器，
+* (4) 为了表示通知，我们用最简单方法：LED，
+* (5) 最后，我们需要加上三个按钮，可是8266没有足够输入脚，只剩下一个模拟输入；因此，我们不得不需要加上电压分配，然后利用MCU中的A0脚（我们承认是个该死的hack）。
+
+再说，另一个重点是SIM800L部件需要3.7-4.1V电源，从8266可以获得的3.3V电源是完全无法利用的。一开始我们决定了利用这个3.3V电源，SIM800L好像没有问题，可是接不上GSM服务。我们在把它调试的时候，我们注意到SIM800L纷纷发出`SMS Ready`，接下来`Call Ready`，然后（我们估计为了电源电压太低）被重启了。注意，SIM800L最大电流需求上2A，从而，我们不得不加上了一个高电流的电压稳压器[MIC29150](http://www.farnell.com/datasheets/94451.pdf)。
+
+## TODO
 
 大遗憾是ESP32不包括builtin-LED，所以为了查看
 
