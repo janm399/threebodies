@@ -47,14 +47,11 @@ build_flags =
 [env:native]
 platform = native
 targets = test
-lib_extra_dirs = src
-test_build_project_src = true
 build_flags =
     -std=c++17
-    -I test_include
 {% endhighlight %}
 
-如上面的`platform.ini`所述，我们的项目包括两个环境：`esp32`和`native`。`esp32`环境描述怎么去编译ESP32代码，而`native`环境提供很方便的方法以测试平台无关的代码。开始实现项目以前，应该核实是否我们刚刚设置了PlatformIO会把项目编译好。请注意`esp32`环境里的`framework = espidf`（行8），其让PlatformIO使用ESP-IDF平台来编译代码，另外还要注意的参数是`build_flags`和`build_unflags`（行17、18、26），其两个参数所设定是编译器该使用哪一个C++标准，即[C++ 17](https://zh.cppreference.com/w/cpp/compiler_support#cpp17)，这样我们可以靠C++ 17的功能。既然大家都以`blink`为古典款Arduino的项目，我们也该来实现一个利用ESP-IDF/FreeRTOS的。当然`blink`并不需要任何C++ 17功能！
+如上面的`platform.ini`所述，我们的项目包括两个环境：`esp32`和`native`。`esp32`环境描述怎么去编译ESP32代码，而`native`环境提供很方便的方法以测试平台无关的代码。开始实现项目以前，应该核实是否我们刚刚设置了PlatformIO会把项目编译好。请注意`esp32`环境里的`framework = espidf`（行8），其让PlatformIO使用ESP-IDF平台来编译代码，另外还要注意的参数是`build_flags`和`build_unflags`（行17、18、25），其两个参数所设定是编译器该使用哪一个C++标准，即[C++ 17](https://zh.cppreference.com/w/cpp/compiler_support#cpp17)，这样我们可以靠C++ 17的功能。既然大家都以`blink`为古典款Arduino的项目，我们也该来实现一个利用ESP-IDF/FreeRTOS的。当然`blink`并不需要任何C++ 17功能！
 
 {% highlight C++ %}
 // 保存在$PROJECT_ROOT/src/main.cpp
