@@ -114,7 +114,7 @@ $
 
 ![古典blink在进行](/assets/2019-10-28-hackmanchester/blink-hw.jpeg){:class="img-responsive"}
 
-在[Visual Studio Code]()，打开PlatformIO扩展后执行`env:esp32 > Upload and Monitor`命令。
+TODO: 在[Visual Studio Code]()，打开PlatformIO扩展后执行`env:esp32 > Upload and Monitor`命令。
 
 
 ## 电路设计
