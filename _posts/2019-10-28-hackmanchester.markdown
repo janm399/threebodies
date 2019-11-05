@@ -54,7 +54,7 @@ build_flags =
     -I test_include
 {% endhighlight %}
 
-如上`platform.ini`所述，我们的项目包括两个环境：`esp32`和`native`。`esp32`环境一方面描述怎么来编译ESP32的代码，`native`环境一方面提供很方便方法来测试平台无关的代码。我没开始实现我们的项目以前，应该首先查看是否我们刚刚设置PlatformIO会把项目编译好。请注意`esp32`环境里的`framework = espidf`（行8），其让PlatformIO使用ESP-IDF平台来编译代码，另外还要注意的参数是`build_flags`和`build_unflags`（行17、18、26），其两个参数所设定是编译器该使用哪一个C++标准，即[C++ 17](https://zh.cppreference.com/w/cpp/compiler_support#cpp17)，这样我们可以靠C++ 17的功能。既然大家以`blink`为古典款Arduino的项目，我们也该来实现一个利用ESP-IDF/FreeRTOS的。当然`blink`并不需要任何C++ 17功能！
+如上`platform.ini`所述，我们的项目包括两个环境：`esp32`和`native`。`esp32`环境一方面描述怎么来编译ESP32的代码，`native`环境一方面提供很方便方法来测试平台无关的代码。我没开始实现我们的项目以前，应该首先查看是否我们刚刚设置PlatformIO会把项目编译好。请注意`esp32`环境里的`framework = espidf`（行8），其让PlatformIO使用ESP-IDF平台来编译代码，另外还要注意的参数是`build_flags`和`build_unflags`（行17、18、26），其两个参数所设定是编译器该使用哪一个C++标准，即[C++ 17](https://zh.cppreference.com/w/cpp/compiler_support#cpp17)，这样我们可以靠C++ 17的功能。既然大家都以`blink`为古典款Arduino的项目，我们也该来实现一个利用ESP-IDF/FreeRTOS的。当然`blink`并不需要任何C++ 17功能！
 
 {% highlight C++ %}
 // 保存在$PROJECT_ROOT/src/main.cpp
@@ -78,7 +78,7 @@ extern "C" void app_main(void) {
 }
 {% endhighlight %}
 
-还剩下电路设计，从上面源码看来，电路也该是特别古典的：有一个ESP32（开发）版、一个电阻器、一个LED即可，如下面的电路图所示。
+还剩下电路设计，从上面源码看来，电路也该是特别古典的：有一个ESP32（开发）版、一个电阻器、一个LED即可，如下面的电路图所示。随着`#define BLINK_GPIO GPIO_NUM_5`，请注意把电阻器接上`IO5`（设计如输出的）脚。
 
 ![古典电路](/assets/2019-10-28-hackmanchester/blink-sch.png){:class="img-responsive"}
 
@@ -116,6 +116,10 @@ $
 
 TODO: 在[Visual Studio Code]()，打开PlatformIO扩展后执行`env:esp32 > Upload and Monitor`命令。
 
+# TODO
+如何从blink到目的，如何来实现FreeRTOS的模块；再说，删除这个Arduino（测试）代码。
+
+VVV
 
 ## 电路设计
 ![基础电路构建](/assets/2019-10-28-hackmanchester/b0.png){:class="img-responsive"}
@@ -129,8 +133,6 @@ TODO: 在[Visual Studio Code]()，打开PlatformIO扩展后执行`env:esp32 > Up
 * (5) 最后，我们需要加上三个按钮，可是8266没有足够输入脚，只剩下一个模拟输入；因此，我们不得不需要加上电压分配，然后利用MCU中的A0脚（我们承认是个该死的hack）。
 
 再说，另一个重点是SIM800L部件需要3.7-4.1V电源，从8266可以获得的3.3V电源是完全无法利用的。一开始我们决定了利用这个3.3V电源，SIM800L好像没有问题，可是接不上GSM服务。我们在把它调试的时候，我们注意到SIM800L纷纷发出`SMS Ready`，接下来`Call Ready`，然后（我们估计为了电源电压太低）被重启了。注意，SIM800L最大电流需求上2A，从而，我们不得不加上了一个高电流的电压稳压器[MIC29150](http://www.farnell.com/datasheets/94451.pdf)。
-
-## TODO
 
 大遗憾是ESP32不包括builtin-LED，所以为了查看
 
