@@ -82,7 +82,7 @@ extern "C" void app_main(void) {
 
 ![古典电路](/assets/2019-10-28-hackmanchester/blink-sch.png){:class="img-responsive"}
 
-硬件修好了后，到点该第一次来把项目编译、上传、执行。输入`platformio run -e esp32 -t upload`命令后，为了核实编译、上传过程成功了，应该观察`platformio run`输出中的`success`，更重要的是该观察是否LED确实在闪烁。
+硬件修好了后，到点该第一次来把项目编译、上传、执行。输入`platformio run -e esp32 -t upload`命令后，为了核实编译、上传过程都成功了，应该观察`platformio run`输出中的`success`，更重要的是该观察是否LED确实在闪烁。
 
 {% highlight shell %}
 $ platformio run -e esp32 -t upload
