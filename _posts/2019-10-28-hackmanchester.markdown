@@ -54,7 +54,7 @@ build_flags =
     -I test_include
 {% endhighlight %}
 
-如上`platform.ini`所述，我们的项目包括两个环境：`esp32`和`native`。`esp32`环境一方面描述怎么来编译ESP32的代码，`native`环境一方面提供很方便方法来测试平台无关的代码。我没开始实现我们的项目以前，应该首先查看是否我们刚刚设置PlatformIO会把项目编译好。请注意`esp32`环境里的`framework = espidf`（行8），其让PlatformIO使用ESP-IDF平台来编译代码，另外还要注意的参数是`build_flags`，特别的`-std=c++17`，这样我们可以靠C++17的功能。即然大家以`blink`为古典款Arduino项目，我们也该来实现一个利用ESP-IDF/FreeRTOS的、利用现代C++的版。
+如上`platform.ini`所述，我们的项目包括两个环境：`esp32`和`native`。`esp32`环境一方面描述怎么来编译ESP32的代码，`native`环境一方面提供很方便方法来测试平台无关的代码。我没开始实现我们的项目以前，应该首先查看是否我们刚刚设置PlatformIO会把项目编译好。请注意`esp32`环境里的`framework = espidf`（行8），其让PlatformIO使用ESP-IDF平台来编译代码，另外还要注意的参数是`build_flags`和`build_unflags`，其两个参数说明编译器该使用哪一个C++标准，即[C++ 17](https://zh.cppreference.com/w/cpp/compiler_support#cpp17)，这样我们可以靠C++ 17的功能。既然大家以`blink`为古典款Arduino的项目，我们也该来实现一个利用ESP-IDF/FreeRTOS的。当然`blink`并不需要任何C++ 17功能！
 
 {% highlight C++ %}
 // 保存在$PROJECT_ROOT/src/main.cpp
@@ -78,7 +78,7 @@ extern "C" void app_main(void) {
 }
 {% endhighlight %}
 
-当然还剩下电路，可是从上面源码看来，电路也该是特别古典的：只要一个ESP（开发）版、一个电阻器、一个LED即可，看于下面的电路图。
+还剩下电路设计，从上面源码看来，电路也该是特别古典的：有一个ESP32（开发）版、一个电阻器、一个LED即可，如下面的电路图所示。
 
 ![古典电路](/assets/2019-10-28-hackmanchester/blink-sch.png){:class="img-responsive"}
 
