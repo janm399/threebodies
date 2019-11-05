@@ -16,7 +16,7 @@ hidden: true
 自然，我们设计的系统并不是完全可靠的，我们只想证明这种系统是能建构的，而我们想探索些新部件、新编程语言和平台。
 
 ## 固件设计
-当然，还需要构建MCU固件。首先我们需要决定我们写的固件是要哪一个框架的，现代许多人使用Arduino框架。虽然Arduino现在丰富大数开源软件库、扩展，但对与习惯于“大电脑、大处理器”开发者来说，Arduino框架看似老旧DOS操作系统。（我认为是因为Arduino框架支持个个MCU平台、个个处理器，从而它只包括最基础feature。）假如没有ESP32这种大功率的MCU，Arduino确实很合适。然而，为了利用所有ESP32的features，我们最好使用[ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/latest/index.html)框架，特别是因为ESP-IDF支持FreeRTOS，开源实时操作系统。因为FreeRTOS志确实操作系统，我们可以用我们从“大电脑”习惯的软件构建方式。简单来说，我们该将应用分开成独立模块，然后使用消息队列把这些模块链接在一起。最重要的是，我们写的模块里的代码看似一般无限循环（请注意，除了IRQ处理的函数意外，这样靠无限循的模块在Arduino都不能执行，因为Arduino只有一个循环，我们需要在这个循环办理一切。）
+当然，还需要构建MCU固件。首先我们需要决定我们写的固件是要哪一个框架的，现代许多人使用Arduino框架。虽然Arduino现在丰富大数开源软件库、扩展，但对与习惯于“大电脑、大处理器”开发者来说，Arduino框架看似老旧DOS操作系统。（我认为是因为Arduino框架支持个个MCU平台、个个处理器，从而它只包括最基础功能。）假如没有ESP32这种大功率的MCU，Arduino确实很合适。然而，为了利用所有ESP32提供的功能，我们最好使用[ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/latest/index.html)框架，特别是因为ESP-IDF支持FreeRTOS，开源实时操作系统。因为FreeRTOS志确实操作系统，我们可以用我们从“大电脑”习惯的软件构建方式。简单来说，我们该将应用分开成独立模块，然后使用消息队列把这些模块链接在一起。最重要的是，我们写的模块里的代码看似一般无限循环（请注意，除了IRQ处理的函数意外，这样靠无限循的模块在Arduino都不能执行，因为Arduino只有一个循环，我们需要在这个循环办理一切。）
 
 看[ESP-IDF 快速入门](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/get-started/index.html)看似很复杂，不过好在有另一个办法：PlatformIO。如下两个源码所示，为了设置一个用ESP-IDF的PlatformIO项目只需要进行一个命令，编辑一个文件。
 
@@ -53,7 +53,7 @@ build_flags =
     -I test_include
 {% endhighlight %}
 
-如上`platform.ini`所述，我们项目包括两个环境：`esp32`和`native`。`esp32`环境一方面描述怎么来编译ESP32的代码，`native`环境一方面提供很方便方法来测试平台无关的代码。我没开始实现我们的项目以前，应该首先查看是否我们刚刚设置PlatformIO会把项目编译好。请注意`esp32`环境里的`framework = espidf`，这个行告诉PlatformIO该用哪一个平台来编译代码，其他要注意的参数是`build_flags`，特别的`-std=c++17`，这样我们可以靠C++17的feature。即然大家以`blink`为古典款Arduino项目，我们也该来实现一个利用ESP-IDF/FreeRTOS的、利用现代C++的版。
+如上`platform.ini`所述，我们的项目包括两个环境：`esp32`和`native`。`esp32`环境一方面描述怎么来编译ESP32的代码，`native`环境一方面提供很方便方法来测试平台无关的代码。我没开始实现我们的项目以前，应该首先查看是否我们刚刚设置PlatformIO会把项目编译好。请注意`esp32`环境里的`framework = espidf`（行8），其让PlatformIO使用ESP-IDF平台来编译代码，另外还要注意的参数是`build_flags`，特别的`-std=c++17`，这样我们可以靠C++17的功能。即然大家以`blink`为古典款Arduino项目，我们也该来实现一个利用ESP-IDF/FreeRTOS的、利用现代C++的版。
 
 {% highlight C++ %}
 // 保存在$HOME/src/main.cpp
