@@ -13,12 +13,12 @@ hidden: true
 * 给医生提供一个简单网上系统为了关照他们的“客户”情况（与其给病人打电话、发一封信，不如用更简单、更效率的方法），
 * 最后，假如出任何问题（比如说病人意外地吃下错药物、忘记吃或者遇到一些副作用），给用户提供一个好用方法以和医生联系。
 
-自然，我们设计的系统（**还**）并不是完全可靠的，我们只想证明这种系统是能建构的，而我们想探索一些新部件、新编程语言和平台。
+自然，我们设计的系统（**还😉**）并不是完全可靠的，我们只想证明这种系统是能建构的，而我们想探索一些新部件、新编程语言和平台。
 
 ## 固件设计
-当然，还需要构建MCU固件。首先我们需要决定我们写的固件是要哪一个框架的，现代许多人使用Arduino框架。虽然Arduino现在丰富大数开源软件库、扩展，但对与习惯于“大电脑、大处理器”开发者来说，Arduino框架看似老旧DOS操作系统。（我认为是因为Arduino框架支持个个MCU平台、个个处理器，从而它只包括最基础的功能。）假如没有ESP32这种大功率的MCU，Arduino确实很合适。然而，为了利用所有ESP32提供的功能，我们最好使用[ESP-IDF](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/index.html)框架，特别是因为ESP-IDF支持FreeRTOS，开源实时操作系统。因此，我们可以使用我们的从“大电脑”习惯的软件开发方式。简单来说，我们该将应用分开成独立模块，然后靠消息队列把这些模块链接在一起。最重要的是，我们写的**每一个**模块中的代码都是一般无限循环（请注意，除了IRQ处理的函数以外，这样靠无限循的模块于Arduino都不能执行，因为Arduino只有一个循环，我们需要在这个循环办理一切。），FreeRTOS会将模块中的无限循环**抢占式调度**在合适处理器核心。
+当然，还需要构建MCU固件。首先我们需要决定我们写的固件是要哪一个框架的，现代许多人使用Arduino框架。虽然Arduino现在丰富大数开源软件库、扩展，但对与习惯于“大电脑、大处理器”开发者来说，Arduino框架看似老旧DOS操作系统。（我认为是因为Arduino框架支持个个MCU平台、个个处理器，从而它只包括最基础的功能。）假如没有ESP32这种大功率的MCU，Arduino确实很合适。然而，为了利用所有ESP32提供的功能，我们最好使用[ESP-IDF](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/index.html)框架，特别是因为ESP-IDF支持FreeRTOS，开源实时操作系统。因此，我们可以使用我们的从“大电脑”习惯的软件开发方式。简单来说，我们该将应用分开成独立模块，然后靠消息队列把这些模块链接在一起。最重要的是，我们写的**每一个**模块中的代码都是一般无限循环（请注意，除了IRQ处理的函数以外，这样靠无限循的模块于Arduino都不能执行，因为Arduino只有一个循环，我们需要在这个循环办理一切。），FreeRTOS会将模块中的无限循环**抢占式调度**在合适处理器核心上。
 
-看[ESP-IDF 快速入门](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/get-started/index.html)看似很复杂，不过好在有另一个办法：PlatformIO。如下两个源码所示，为了设置一个用ESP-IDF的PlatformIO项目只需要进行一个命令，编辑一个文件。
+看[ESP-IDF 快速入门](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/get-started/index.html)看似复杂，不过好在有另一个办法：PlatformIO。如下两个源码所示，为了设置一个用ESP-IDF的PlatformIO项目只需要进行一个命令，编辑一个文件。
 
 {% highlight shell %}
 $ platformio init
