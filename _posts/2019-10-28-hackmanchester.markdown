@@ -3,7 +3,6 @@ layout: post
 title:  "Hack Manchester挑战：固件基础设置"
 date:   2019-10-28 15:23:44 +0000
 categories: [HW, SW]
-hidden: true
 ---
 这个周末，Three Bodies参加了一个[Hack Manchester](https://www.hac100.com/event/HM2019/)的hackathon；25个小时为了弄
 好任何有趣的项目，每个编程语言、每个平台都行。我们已经决定试一试把软件与硬件结合在一起；因此，决定了参加[ClockWork公司发的挑战](https://www.clockworksms.com/blog/hack-manchester-2019/)。简单来说，ClockWork挑战是“利用ClockWork短信API以构建一个帮助患长期疾病的人。我们不太了解患长期疾病的人一般靠什么工具，一般面对什么风浪，天天遇到什么问题。我们来调查[NHS](https://www.england.nhs.uk/)部门发行的报告，发现了患病的人难以遵照药物的安排；不是因问他们不要遵照安排，而是因为他们常常忘记、吃药物的安排没被描述清楚、效率低、副作用太严重了等等。所以，我们有意了解释下所示的问题：
