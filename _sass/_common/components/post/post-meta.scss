@@ -1,3 +1,4 @@
+.posts-expand .post-excerpt,
 .posts-expand .post-meta {
   margin: 3px 0 60px 0;
   color: $grey-dark;
@@ -16,6 +17,12 @@
     font-size: 14px;
     margin-top: 2px;
   }
+}
+
+.posts-expand .post-excerpt {
+  font-family: $font-family-posts;
+  font-size: 14px;
+  text-align: left;
 }
 
 .post-wordcount {
