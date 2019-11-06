@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Hack Manchester挑战"
+title:  "Hack Manchester挑战：固件基础设置"
 date:   2019-10-28 15:23:44 +0000
 categories: [HW, SW]
 hidden: true
@@ -15,7 +15,7 @@ hidden: true
 
 自然，我们设计的系统（**还😉**）并不是完全可靠的，我们只想证明这种系统是能建构的，而我们想探索一些新部件、新编程语言和平台。
 
-## 固件设计
+# 固件设计
 当然，还需要构建MCU固件。首先我们需要决定我们写的固件是要哪一个框架的，现代许多人使用Arduino框架。虽然Arduino现在丰富大数开源软件库、扩展，但对与习惯于“大电脑、大处理器”开发者来说，Arduino框架看似老旧DOS操作系统。（我认为是因为Arduino框架支持个个MCU平台、个个处理器，从而它只包括最基础的功能。）假如没有ESP32这种大功率的MCU，Arduino确实很合适。然而，为了利用所有ESP32提供的功能，我们最好使用[ESP-IDF](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/index.html)框架，特别是因为ESP-IDF支持FreeRTOS，开源实时操作系统。因此，我们可以使用我们的从“大电脑”习惯的软件开发方式。简单来说，我们该将应用分开成独立模块，然后靠消息队列把这些模块链接在一起。最重要的是，我们写的**每一个**模块中的代码都是一般无限循环（请注意，除了IRQ处理的函数以外，这样靠无限循的模块于Arduino都不能执行，因为Arduino只有一个循环，我们需要在这个循环办理一切。），FreeRTOS会将模块中的无限循环**抢占式调度**在合适处理器核心上。
 
 看[ESP-IDF 快速入门](https://docs.espressif.com/projects/esp-idf/zh_CN/latest/get-started/index.html)看似复杂，不过好在有另一个办法：PlatformIO。如下两个源码所示，为了设置一个用ESP-IDF的PlatformIO项目只需要进行一个命令，编辑一个文件。
@@ -24,8 +24,8 @@ hidden: true
 $ platformio init
 {% endhighlight %}
 
-{% highlight ini linenos %} 
-// 保存在$PROJECT_ROOT/platform.ini
+{% highlight ini linenos %}
+# 保存在$PROJECT_ROOT/platform.ini
 [common]
 lib_deps =
     
@@ -111,115 +111,13 @@ $
 
 ![古典blink在进行](/assets/2019-10-28-hackmanchester/blink-hw.jpeg){:class="img-responsive"}
 
-TODO: 在[Visual Studio Code]()，打开PlatformIO扩展后执行`env:esp32 > Upload and Monitor`命令。
+利用PlatformIO以开发ESP-IDF固件最简单、最方便IDE一定是[Visual Studio Code](https://code.visualstudio.com/)；它包括PlatformIO插件，而它的C++插件也非常不错。安装这两个插件很简单：在Visual Studio Code，打开扩展，搜索C++和PlatformIO插件。
 
-# TODO
-如何从blink到目的，如何来实现FreeRTOS的模块；再说，删除这个Arduino（测试）代码。
+![Visual Studio Code插件](/assets/2019-10-28-hackmanchester/vscode0.png){:class="img-responsive"}
 
-VVV
+把插件安装好之后，`platformio run -e esp32 -t upload`命令也可以在Visual Studio Code来执行，打开PlatformIO扩展后执行`env:esp32 > Upload and Monitor`命令。
 
-## 电路设计
-![基础电路构建](/assets/2019-10-28-hackmanchester/b0.png){:class="img-responsive"}
-*电路设计*
+![Visual Studio Code PlatformIO命令](/assets/2019-10-28-hackmanchester/vscode1.png){:class="img-responsive"}
 
-这个电路包括五个独立配件：
-* (1) 项目核心是8266MCU部件—虽然它没有足够输出，但是还合适这个比较简单的hack，
-* (2) 为了把项目连接上GSM网络，我们使用SIM800L GSM部件，与大家都习惯的相反，它使用“古代”串行接口，
-* (3), (3ʹ) 每一个药盒子都包括三个LED，两个发看得见光的，一个发红外光的；另外，每一个药盒子有感红外的传感器，
-* (4) 为了表示通知，我们用最简单方法：LED，
-* (5) 最后，我们需要加上三个按钮，可是8266没有足够输入脚，只剩下一个模拟输入；因此，我们不得不需要加上电压分配，然后利用MCU中的A0脚（我们承认是个该死的hack）。
-
-再说，另一个重点是SIM800L部件需要3.7-4.1V电源，从8266可以获得的3.3V电源是完全无法利用的。一开始我们决定了利用这个3.3V电源，SIM800L好像没有问题，可是接不上GSM服务。我们在把它调试的时候，我们注意到SIM800L纷纷发出`SMS Ready`，接下来`Call Ready`，然后（我们估计为了电源电压太低）被重启了。注意，SIM800L最大电流需求上2A，从而，我们不得不加上了一个高电流的电压稳压器[MIC29150](http://www.farnell.com/datasheets/94451.pdf)。
-
-大遗憾是ESP32不包括builtin-LED，所以为了查看
-
-上面代码所示是一个跟Arduino古典`blink`一样的概念，唯一区别是ESP-IDF没有Arduino中的两个函数`setup`和`loop`，ESP-IDF只有一个函数需要实现，想象这个函数是Linux中的`init`编程。Linux核型启动的时候，它也执行`init`编程，然后`init`负责处理剩下的启动过程。
-
-多亏[PlatformIO]()中ESP32工具链包括现代C++编译器（是编译器是支持C++17的！），我们很容易就可以利用现代C++标准的方法。使用ESP32
-
-所以，写固件的时候应该按照所有“clean code”的规则，尤其加上仔细的测试。不过，拿利用些硬件的功能来说，在x86处理器进行下到底怎么来写细节的测试代码？比如，我们靠`SoftwareSerial`来连接GSM配件，就算你的用x86_64处理器的电脑有这么古老串行端口。你写好x86_64测试代码之后把它进行在这么快处理器跑肯定会出”works on my machine“，可是并不在MCU这样的问题。我们可以下载一些虚拟硬件的库，不幸的是这些库一般指支持根本Arduino固件，为了来测试更复杂接口、更复杂MCU能力，我们不得不需要自己写这种虚拟硬件库。
-
-从我们的[GitHub版本库](https://github.com/teroxik/hackmanchester2019-hw)举一个例子：怎么虚拟`SoftwareSerial`，然后怎么来使用这个虚拟`SoftwareSerial`？
-
-{% highlight C++ %}
-class SoftwareSerial {
- public:
-  void println(char *);
-  //...
-}
-{% endhighlight %}
-
-那么，`SoftwareSerial`是在Arduino固件包括的，x86_64并不包括Arduino固件；当然，可以很容易地自己写一个x86_64实现，比如：
-
-{% highlight C++ %}
-using namespace std;
-class SoftwareSerial {
- private:
-  vector<string> writes;
-
- public:
-  void println(char *line) { writes.push_back(string(line)); }
-}
-{% endhighlight %}
-
-到目前为止一切顺利吧，不过怎么加上测试中的expectations，固件代码不类似于利用dependency injection的代码。我们代码一般直接地构建`SoftwareSerial`对象。好在使用对象`SoftwareSerial`靠它的`begin(...)`方法；从而，我们虚拟实现只需要提供合适地实现`begin(...)`方法。
-
-{% highlight C++ %}
-class SoftwareSerial {
- public:
-  void begin(int baud, int rx_pin, int tx_pin) {
-    software_serial_mock::instance().add(this, baud, rx_pin, tx_pin);
-  }
-}
-{% endhighlight %}
-
-如下源码所示，`software_serial_mock`是控制虚拟`SoftwareSerial`的接口，每次我们的固件调用`SoftwareSerial.begin(...)`，我们把刚刚调用`SoftwareSerial`对象放在`software_serial_mock`里。最简单来说，`software_serial_mock`是一种版本库，我们写测试代码一般会调用这个版本库中`get`方法为了获取`SoftwareSerial`对象。请注意，在production环境下，`get`方法应该是返回`optional`值；不过这里`get`只是返回`SoftwareSerial`指针或者--当找不到匹配的`SoftwareSerial`--`nullptr`的。
-
-{% highlight C++ %}
-using namespace std;
-class software_serial_mock {
- private:
-   vector<tuple<int, int, int, SoftwareSerial *>> mock_instances;
-
- public:
-  void add(SoftwareSerial *instance, int baud, int rx_pin, int tx_pin) {
-    mock_instances.emplace_back(make_tuple(baud, rx_pin, tx_pin, instance));
-  }
-  SoftwareSerial *get(const int rx_pin) const;
-};
-{% endhighlight %}
-
-XXX
-
-{% highlight C++ %}
-void test_xxx() {
-  transport t;
-  t.loop();
-
-  auto writes = software_serial_mock::instance().get(pins::sms_rx)->get_writes();
-  // 调查writes里有没有对的质量
-}
-
-extern "C" int main(int, char **) {
-  UNITY_BEGIN();
-  RUN_TEST(test_xxx);
-  UNITY_END();
-  return 0;
-}
-{% endhighlight %}
-
-显然，调查`get_writes()`，返回`std::vector<std::string>`的方法很麻烦；更方便的是加上一种控制接口；把它实现在`SoftwareSerial`与`software_serial_mock`，如下例所示：
-
-{% highlight C++ %}
-using namespace std;
-class software_serial_control {
- public:
-  virtual void rx(string rx, 
-                  chrono::duration<uint, milli> timeout) = 0;
-  virtual void tx(string tx) = 0;
-  virtual void add_auto_rxtx(string request, 
-                             string response,
-                             chrono::duration<uint, milli> timeout) = 0;
-  virtual void set_blocking(bool blocking) = 0;
-};
-{% endhighlight %}
+# 总结
+这个帖子就结束这里。下一帖子我们会看如何接上一个控制LED的按钮，我们来探索两个方式为了处理按钮状态改变。
