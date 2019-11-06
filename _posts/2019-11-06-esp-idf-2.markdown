@@ -1,8 +1,56 @@
 ---
 layout: post
 title:  "ESP-IDF 2：固件基础设置"
-date:   2019-11-06 18:00:00 +0000
+date:   2019-11-06 17:00:00 +0000
 categories: [HW, SW]
+excerpt: "sss"
 hidden: true
 ---
-# TODO
+古典“blink”项目我们探索于下一个帖子，现在我们来加上一个按钮，让把按钮控制在`BLINK_GPIO`接上的LED：如果LED在发光的状态，接下来把按钮按下会让它不发光，反之亦然。如下电路图所示，我们只加上一个按钮。
+
+![包括按钮的电路](/assets/2019-10-28-hackmanchester/button-sch.png){:class="img-responsive"}
+
+随着上面的电路图，我们首先需要设置`GPIO_NUM_17`于输入脚，其中在`app_main`中的无限循环里每一个重复从`GPIO_NUM_17`读目前逻辑值。因为按钮是接上0V，按下是`GPIO_NUM_17`的逻辑值会等于`false`，假如如果不按下—也就是说`GPIO_NUM_17`没有任何电链接时—按照逻辑IC规则，逻辑值是不一定的。为了让输入脚的逻辑值一定的，我们需要加上所谓上拉电阻器。好在ESP32里每一个GPIO脚都包括内置、可配置的上拉电阻器，只有输入脚被设置好，才能靠内置上拉电阻器以让它的逻辑值一定的。
+
+{% highlight C++ linenos %}
+// 保存在$PROJECT_ROOT/src/main.cpp
+
+#include <driver/gpio.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#include "sdkconfig.h"
+
+#define BLINK_GPIO GPIO_NUM_5
+#define BUTTON_GPIO GPIO_NUM_17
+
+extern "C" void app_main(void) {
+  gpio_pad_select_gpio(BLINK_GPIO);
+  gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
+
+  gpio_pad_select_gpio(BUTTON_GPIO);
+  gpio_set_direction(BUTTON_GPIO, GPIO_MODE_INPUT);
+  gpio_set_pull_mode(BUTTON_GPIO, GPIO_PULLUP_ONLY);
+
+  ...
+}
+{% endhighlight %}
+
+随着上面的源码，执行到行17后，我们可以调用`gpio_get_level`以读`GPIO_NUM_17`输入脚的目前的逻辑值。好像加上前面提到的`gpio_get_level`即可。
+
+{% highlight C++ linenos %}
+extern "C" void app_main(void) {
+  
+  bool light = false;
+  while (1) {
+    if (gpio_get_level(BUTTON_GPIO) == 0) {
+      light = !light;
+      gpio_set_level(BLINK_GPIO, light);
+    }
+  }
+}
+{% endhighlight %}
+
+执行上面的代码会出两个问题：则被`task_wdt`（什么鬼？！）引起的自动重启，则好像LED一达到发光的状态不再达到不发光的。为了办理第一个问题，要知道什么是WDT？其实，WDT是一种自动计时器，处理器会每一个时钟脉冲把WDT加成1，WDT一达到一定值，处理器就被自动重启了。解决其实很简单，我们只需要适时把WDT复位，因此每一个重复都调用`esp_task_wdt_reset()`即可。第二个问题的原因更复杂，首先要调查为什么读输入中的逻辑值是这么不稳定的。
+
+![按钮抖动](/assets/2019-10-28-hackmanchester/bounce.jpeg){:class="img-responsive"}
+
