@@ -55,7 +55,7 @@ kramdown:
     block:
       line_numbers: true
       start_line: 1
-      
+
 # Default Attributes
 ## Docs: https://jekyllrb.com/docs/configuration/#front-matter-defaults
 defaults:
@@ -374,7 +374,7 @@ han: false
 
 # Disqus
 disqus:
-  enable: true
+  enable: false
   shortname: simpleyyt
   count: true
   # hide comments (visitors need to click to load the comments)
