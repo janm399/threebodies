@@ -77,7 +77,7 @@ extern "C" void app_main(void) {
 
 还剩下电路设计，从上面源码看来，电路也该是特别古典的：有一个ESP32（开发）版、一个电阻器、一个LED即可，如下面的电路图所示。随着`#define BLINK_GPIO GPIO_NUM_5`，请注意把电阻器接上`IO5`（设计如输出的）脚。
 
-![古典电路](/assets/2019-10-28-hackmanchester/blink-sch.png){:class="img-responsive"}
+![古典电路](/assets/2019-10-28-esp-idf-1/blink-sch.png){:class="img-responsive"}
 
 硬件修好了后，到点该第一次来把项目编译、上传、执行。输入`platformio run -e esp32 -t upload`命令后，为了核实编译、上传过程都成功了，应该观察`platformio run`输出中的`success`，更重要的是该观察是否LED确实在闪烁。
 
@@ -109,15 +109,15 @@ native         IGNORED
 $
 {% endhighlight %}
 
-![古典blink在进行](/assets/2019-10-28-hackmanchester/blink-hw.jpeg){:class="img-responsive"}
+![古典blink在进行](/assets/2019-10-28-esp-idf-1/blink-hw.jpeg){:class="img-responsive"}
 
 利用PlatformIO以开发ESP-IDF固件最简单、最方便IDE一定是[Visual Studio Code](https://code.visualstudio.com/)；它包括PlatformIO插件，而它的C++插件也非常不错。安装这两个插件很简单：在Visual Studio Code，打开扩展，搜索C++和PlatformIO插件。
 
-![Visual Studio Code插件](/assets/2019-10-28-hackmanchester/vscode0.png){:class="img-responsive"}
+![Visual Studio Code插件](/assets/2019-10-28-esp-idf-1/vscode0.png){:class="img-responsive"}
 
 把插件安装好之后，`platformio run -e esp32 -t upload`命令也可以在Visual Studio Code来执行，打开PlatformIO扩展后执行`env:esp32 > Upload and Monitor`命令。
 
-![Visual Studio Code PlatformIO命令](/assets/2019-10-28-hackmanchester/vscode1.png){:class="img-responsive"}
+![Visual Studio Code PlatformIO命令](/assets/2019-10-28-esp-idf-1/vscode1.png){:class="img-responsive"}
 
 # 总结
 这个帖子就结束这里。下一帖子我们会看如何接上一个控制LED的按钮，我们来探索两个方式为了处理按钮状态改变。
