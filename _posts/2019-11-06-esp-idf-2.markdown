@@ -65,13 +65,13 @@ extern "C" void app_main(void) {
 可是问题还在，虽然按键被按下了，但`gpio_get_level(BUTTON_GPIO)` **偶尔**返回`1`！另外，`gpio_get_level()`稳不稳定看似随着按键被按下了多长时间。被按下了短时间，`gpio_get_level()`非常不稳定，被按下了比较长时间，`gpio_get_level()`更稳定，不过还并不是稳定的。怎么回事？按键被按下了时我们需要量电压平，于被按下很短时间开始，如下两个视频所示。
 
 <div class="myvideo">
-   <video  style="display:block; width:100%; height:auto;" autoplay controls loop="loop">
+   <video  style="display:block; width:100%; height:auto;" autoplay controls loop="false">
        <source src="{{ site.baseurl }}/assets/2019-11-06-esp-idf-2/24ms.mp4" type="video/mp4" />
    </video>
 </div>
 
 <div class="myvideo">
-   <video  style="display:block; width:100%; height:auto;" autoplay controls loop="loop">
+   <video  style="display:block; width:100%; height:auto;" autoplay controls loop="false">
        <source src="{{ site.baseurl }}/assets/2019-11-06-esp-idf-2/240ms.mp4" type="video/mp4" />
    </video>
 </div>
@@ -102,7 +102,11 @@ extern "C" void app_main(void) {
 
 这样做我们一定遇到另一个问题：
 
-250 ns per loop
+<div class="myvideo">
+   <video  style="display:block; width:100%; height:auto;" autoplay controls loop="false">
+       <source src="{{ site.baseurl }}/assets/2019-11-06-esp-idf-2/50ms.mp4" type="video/mp4" />
+   </video>
+</div>
 
 从如上示波镜图所示，我们发现利用`gpio_get_level()`以读按键状态随着MCU时钟源、即它的频率。不适时调用`gpio_get_level()`会让它返回“不对”值，
 
