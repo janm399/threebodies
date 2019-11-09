@@ -93,12 +93,25 @@ extern "C" void app_main(void) {
 
 测量仪器写完后，我们可以使用示波镜来探索按键被按下的时候MCU从`BUTTON_GPIO`输入脚读什么样的值。
 
-![下降沿](/assets/2019-11-06-esp-idf-2/mu.png){:class="img-responsive"}
-![上升沿](/assets/2019-11-06-esp-idf-2/md-get.png){:class="img-responsive"}
+![下降沿](/assets/2019-11-06-esp-idf-2/bd.png){:class="img-responsive"}
+![上升沿](/assets/2019-11-06-esp-idf-2/bu.png){:class="img-responsive"}
 
 如上面的两张示波镜图所示是两个信号：紫色是测量仪器信号，黄色是按键输入脚信号。随着示波镜图问题很简单理解的：MCU的频率太高了，按照下面的代码，MCU每450ns—450纳秒！这么短一阵时间—调用`gpio_get_level()`。只要我们每一个重复调用`vTaskDelay(pdMS_TO_TICKS(50))`为了使循环减速点。
 
-![下降沿](/assets/2019-11-06-esp-idf-2/slow.png){:class="img-responsive"}
+{% highlight C++ linenos %}
+  bool light = false;
+  bool x = false;
+  esp_task_wdt_init(portMAX_DELAY, false);
+  while (1) {
+    gpio_set_level(CLK_GPIO, x);
+    x = !x;
+    if (gpio_get_level(BUTTON_GPIO) == 0) {
+      light = !light;
+      gpio_set_level(BLINK_GPIO, light);
+    }
+    vTaskDelay(pdMS_TO_TICKS(50));
+  }
+{% endhighlight %}
 
 这样做我们一定遇到另一个问题：
 
@@ -106,6 +119,13 @@ extern "C" void app_main(void) {
    <video  style="display:block; width:100%; height:auto;" autoplay controls loop="false">
        <source src="{{ site.baseurl }}/assets/2019-11-06-esp-idf-2/50ms.mp4" type="video/mp4" />
    </video>
+</div>
+
+<div class="image-slider">
+  <div>
+    <img src="/assets/2019-11-06-esp-idf-2/slow-1b.png" />
+  </div>
+  <img src="/assets/2019-11-06-esp-idf-2/slow-1a.png" />
 </div>
 
 从如上示波镜图所示，我们发现利用`gpio_get_level()`以读按键状态随着MCU时钟源、即它的频率。不适时调用`gpio_get_level()`会让它返回“不对”值，
