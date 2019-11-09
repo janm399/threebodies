@@ -8,7 +8,7 @@ hidden: true
 ---
 古典“blink”项目我们探索于下一个帖子，现在我们来加上一个按钮，让把按钮控制在`BLINK_GPIO`接上的LED：如果LED在发光的状态，接下来把按钮按下会让它不发光，反之亦然。如下电路图所示，我们只加上一个按钮。
 
-![包括按钮的电路](/assets/2019-11-06-esp-idf-2/button-sch.png){:class="img-responsive"}
+![包括按钮的电路](/assets/2019-11-06-esp-idf-2/button-sch.png)
 
 随着上面的电路图，我们首先需要设置`GPIO_NUM_17`于输入脚，其中在`app_main`中的无限循环里每一个重复从`GPIO_NUM_17`读目前逻辑值。因为按钮是接上0V，按下是`GPIO_NUM_17`的逻辑值会等于`false`，如果不按下—也就是说`GPIO_NUM_17`没有任何电链接时—按照逻辑IC规则，逻辑值是不一定的。为了让输入脚的逻辑值一定的，我们需要加上所谓上拉电阻器。好在ESP32里每一个GPIO脚都包括内置、可配置的上拉电阻器，只有输入脚被设置好，才能靠内置上拉电阻器以让它的逻辑值一定的。
 
@@ -65,13 +65,13 @@ extern "C" void app_main(void) {
 可是问题还在，虽然按键被按下了，但`gpio_get_level(BUTTON_GPIO)` **偶尔**返回`1`！另外，`gpio_get_level()`稳不稳定看似随着按键被按下了多长时间。被按下了短时间，`gpio_get_level()`非常不稳定，被按下了比较长时间，`gpio_get_level()`更稳定，不过还并不是稳定的。怎么回事？按键被按下了时我们需要量电压平，于被按下很短时间开始，如下两个视频所示。
 
 <div class="myvideo">
-   <video  style="display:block; width:100%; height:auto;" autoplay controls loop="false">
+   <video  style="display:block; width:100%; height:auto;" controls loop="false">
        <source src="{{ site.baseurl }}/assets/2019-11-06-esp-idf-2/24ms.mp4" type="video/mp4" />
    </video>
 </div>
 
 <div class="myvideo">
-   <video  style="display:block; width:100%; height:auto;" autoplay controls loop="false">
+   <video  style="display:block; width:100%; height:auto;" controls loop="false">
        <source src="{{ site.baseurl }}/assets/2019-11-06-esp-idf-2/240ms.mp4" type="video/mp4" />
    </video>
 </div>
@@ -93,8 +93,8 @@ extern "C" void app_main(void) {
 
 测量仪器写完后，我们可以使用示波镜来探索按键被按下的时候MCU从`BUTTON_GPIO`输入脚读什么样的值。
 
-![下降沿](/assets/2019-11-06-esp-idf-2/bd.png){:class="img-responsive"}
-![上升沿](/assets/2019-11-06-esp-idf-2/bu.png){:class="img-responsive"}
+![下降沿](/assets/2019-11-06-esp-idf-2/bd.png)
+![上升沿](/assets/2019-11-06-esp-idf-2/bu.png)
 
 如上面的两张示波镜图所示是两个信号：紫色是测量仪器信号，黄色是按键输入脚信号。随着示波镜图问题很简单理解的：MCU的频率太高了，按照下面的代码，MCU每450ns—450纳秒！这么短一阵时间—调用`gpio_get_level()`。只要我们每一个重复调用`vTaskDelay(pdMS_TO_TICKS(50))`为了使循环减速点。
 
@@ -116,17 +116,74 @@ extern "C" void app_main(void) {
 这样做我们一定遇到另一个问题：
 
 <div class="myvideo">
-   <video  style="display:block; width:100%; height:auto;" autoplay controls loop="false">
+   <video  style="display:block; width:100%; height:auto;" controls loop="false">
        <source src="{{ site.baseurl }}/assets/2019-11-06-esp-idf-2/50ms.mp4" type="video/mp4" />
    </video>
 </div>
 
-<div class="image-slider">
-  <div>
-    <img src="/assets/2019-11-06-esp-idf-2/slow-1b.png" />
-  </div>
-  <img src="/assets/2019-11-06-esp-idf-2/slow-1a.png" />
-</div>
+![下降沿](/assets/2019-11-06-esp-idf-2/slow-1a.png)
+![下降沿](/assets/2019-11-06-esp-idf-2/slow-1b.png)
 
 从如上示波镜图所示，我们发现利用`gpio_get_level()`以读按键状态随着MCU时钟源、即它的频率。不适时调用`gpio_get_level()`会让它返回“不对”值，
 
+![下降沿](/assets/2019-11-06-esp-idf-2/intr-nice.png)
+
+<div class="myvideo">
+   <video  style="display:block; width:100%; height:auto;" controls loop="false">
+       <source src="{{ site.baseurl }}/assets/2019-11-06-esp-idf-2/intr-bounce.mp4" type="video/mp4" />
+   </video>
+</div>
+
+![下降沿](/assets/2019-11-06-esp-idf-2/intr-bounce.png)
+![下降沿](/assets/2019-11-06-esp-idf-2/intr-debounce.png)
+
+{% highlight C++ linenos %}
+#include <driver/gpio.h>
+#include <esp_task_wdt.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/semphr.h>
+#include <freertos/task.h>
+#include <math.h>
+#include "sdkconfig.h"
+
+#define MIN_DELAY 500
+#define BUTTON_GPIO GPIO_NUM_17
+#define BLINK_GPIO GPIO_NUM_5
+
+static xSemaphoreHandle semaphore_handle = nullptr;
+
+void led_task(void* arg) {
+  bool x = false;
+  while (true) {
+    xSemaphoreTake(semaphore_handle, portMAX_DELAY);
+    x = !x;
+    gpio_set_level(BLINK_GPIO, x);
+  }
+}
+
+void IRAM_ATTR button_isr_handler(void* arg) {
+  static auto last_time = 0;
+  auto now = xTaskGetTickCountFromISR();
+  if (now - last_time > MIN_DELAY) {
+    auto ignored = pdFALSE;
+    xSemaphoreGiveFromISR(semaphore_handle, &ignored);
+    last_time = now;
+  }
+}
+
+extern "C" void app_main(void) {
+  gpio_pad_select_gpio(BLINK_GPIO);
+  gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
+
+  gpio_pad_select_gpio(BUTTON_GPIO);
+  gpio_set_direction(BUTTON_GPIO, GPIO_MODE_INPUT);
+  gpio_set_pull_mode(BUTTON_GPIO, GPIO_PULLUP_ONLY);
+  gpio_set_intr_type(BUTTON_GPIO, GPIO_INTR_NEGEDGE);
+
+  semaphore_handle = xSemaphoreCreateBinary();
+  xTaskCreate(led_task, "led_task", 2048, NULL, 10, NULL);
+  gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1);
+  gpio_isr_handler_add(BUTTON_GPIO, button_isr_handler, nullptr);
+}
+{% endhighlight %}
