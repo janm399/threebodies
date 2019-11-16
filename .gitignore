@@ -5,4 +5,5 @@ _site
 .rebuild
 vendor
 .DS_Store
+*.s#*
 
