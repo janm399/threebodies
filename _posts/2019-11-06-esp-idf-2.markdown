@@ -68,7 +68,7 @@ extern "C" void app_main(void) {
 }
 {% endhighlight %}
 
-可是问题还在，虽然按键被按下了，但`gpio_get_level(BUTTON_GPIO)` **偶尔**返回`1`！另外，`gpio_get_level()`稳不稳定看似随着按键被按下了多长时间。被按下了短时间，`gpio_get_level()`非常不稳定，被按下了比较长时间，`gpio_get_level()`更稳定，不过还并不是稳定的。怎么回事？按键被按下了时我们需要量电压平，于被按下很短时间开始，如下两个视频所示。
+可是问题还在，虽然按键被按下了，但`gpio_get_level(BUTTON_GPIO)` **偶尔**返回`1`！另外，`gpio_get_level()`稳不稳定看似随着按键被按下了多长时间。被按下了很短时间，`gpio_get_level()`非常不稳定，被按下了比较长时间，`gpio_get_level()`更稳定，只不过还不算是稳定的。怎么回事？
 
 <div class="myvideo">
    <video  style="display:block; width:100%; height:auto;" controls loop="false">
@@ -82,7 +82,7 @@ extern "C" void app_main(void) {
    </video>
 </div>
 
-为了发现`gpio_get_level()`这么不稳定，首先要发现如下`while`无限循环里每一个循环需要都长时间。如下代码包含一种时间测量代码，即每一个循环重复需要多长时间。
+为了发现`gpio_get_level()`这么不稳定，首先要发现如下`while`无限循环里每一个循环需要多长时间。如下代码包含一种时间测量代码，每一个循环重复会把`CLK_GPIO`输出发的电平交替。
 
 {% highlight C++ linenos %}
   bool light = false;
