@@ -4,7 +4,6 @@ title:  "ESP-IDF 2：固件基础设置"
 date:   2019-11-06 17:00:00 +0000
 categories: [HW, SW]
 excerpt: "sss"
-hidden: true
 ---
 古典“blink”项目我们上个帖子中探索过，现在我们来加上一个按键，让它控制于`BLINK_GPIO`接上的LED：当LED发光时（即`LED_GPIO`输出在高电平状态），把按键按下会让它不发光；当LED不发光，把按键按下会让它发光：这么简单。
 
