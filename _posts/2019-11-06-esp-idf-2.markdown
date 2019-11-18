@@ -145,18 +145,40 @@ extern "C" void app_main(void) {
 跟着上示波镜图所示的执行顺序，看似取样定理中所谓“混叠”问题。简单来说，按键按下的效率比取样效率低多了（循环进行的时间相当于$$T\approx50ms; f\approx20Hz$$相对于按键被按下的时间相当于只$$T\approx18ms; f\approx55Hz$$），以致`gpio_get_level`偶尔读取对用户来说不对的电平值。有一种跟着取样定理的解决办法：把取样效率增加到至少$$2f$$，因此把`vTaskDelay`参数减少到$$18ms/2=9ms$$或者$$T\approx18ms; f\approx55Hz, 2f\approx110Hz; 2T\approx9ms$$。目前`app_main`的无限循环里有这么简单代码，因此我们很容易得考虑它的执行顺序和间隔。代码越来越复杂会让这种理性也越来越复杂，最终我们会认识到这类处理输入的方式完全不满意。我们需要寻找另一个方式，靠不一样基本的方式。
 
 ## 中断实现
-在无限循环办理I/O？？？更合适办法是利用中断的，处理器一接到中断会把目前执行的任务停止，接下来进行中断处理程序；程序进行完后，处理器会再继续进行以前停止的过程。当然，当一个处理中断程序进行着，另一个处理终端程序可以把它停止、代替，为了决定哪一个中断程序应该进行，处理器/操作系统使用中断处理程序的优先。ESP32支持
+在无限循环办理I/O不仅仅特别简明，而且我们的程序越来越复杂，就越来越难地预言无限循环的性能如何，特别是等待时间。更合适办法是利用中断的，处理器一接到中断会把目前执行的任务停止，接下来进行中断处理程序；程序进行完后，处理器会再继续进行以前停止的过程。如我们写的忙碌等待循环不同，中断是一种事件驱动编程方式。
 
-![下降沿](/assets/2019-11-06-esp-idf-2/intr-nice.png)
+ESP32/FreeRTOS的中断构建其实有点复杂，到时我们会探索它的细节，目前我们只来设置一个中断处理函数，让它处理在`BUTTON_GPIO`接上一个按键。硬件设计没有任何改变，为了保证稳定电平，设计还依赖内部上拉电阻器，唯一各处别是处理被按键引起的电平改变的代码。
 
-<div class="myvideo">
-   <video  style="display:block; width:100%; height:auto;" controls loop="false">
-       <source src="{{ site.baseurl }}/assets/2019-11-06-esp-idf-2/intr-bounce.mp4" type="video/mp4" />
-   </video>
-</div>
+{% highlight C++ linenos %}
+void IRAM_ATTR button_isr_handler(void* arg) {
+  // 按键被按下后会引起中断，从而执行其函数
+}
 
-![下降沿](/assets/2019-11-06-esp-idf-2/intr-bounce.png)
-![下降沿](/assets/2019-11-06-esp-idf-2/intr-debounce.png)
+extern "C" void app_main(void) {
+  ...
+  
+  gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1);
+  gpio_set_intr_type(BUTTON_GPIO, GPIO_INTR_NEGEDGE);
+  gpio_isr_handler_add(BUTTON_GPIO, button_isr_handler, nullptr);
+}
+{% endhighlight %}
+
+上面的列表的唯一改变是在`app_main`调用`gpio_install_isr_service`，`gpio_set_intr_type`、`gpio_isr_handler_add`。第一个函数`gpio_install_isr_service`会在目前进行处理器核安装中断处理程序，比如如果`app_main`在第一个处理器核，接中断事件之后，处理中断的函数也会在第一个处理器核被执行。第二个函数`gpio_set_intr_type`描述在什么情况下发一个中断，这里`gpio_set_intr_type`的参数所设置`BUTTON_GPIO`在输入电平下落下发一个中断。最后一个函数（`gpio_isr_handler_add`）安装中断处理函数。漂亮啊！只剩下实现`button_isr_handler`即可。
+
+{% highlight C++ linenos %}
+void IRAM_ATTR button_isr_handler(void* arg) {
+  static auto last_time = 0;
+  static bool x = false;
+  auto now = xTaskGetTickCountFromISR();
+  if (now - last_time > MIN_DELAY) {
+    x = !x;
+    gpio_set_level(BLINK_GPIO, x);
+    last_time = now;
+  }
+}
+{% endhighlight %}
+
+为了解决这个问题，我们需要把中断处理所有的代码分开成两个函数。第一个函数还是中断处理函数，它只负责告在最短时间内诉第二个函数中断被接到了，该来进行需要更长时间的代码。好在FreeRTOS包含几个所谓synchronization primitives，其中我们来利用最简单的：semaphore。这个semaphore跟红绿灯一样的概念：有两个独立过程查看其semaphore，第一个过程等到第二个过程会把semaphore变绿色。变绿色之后，semaphore自动地再变红色，结果第一个过程再需要等到第二个过程把它变绿色。想象semaphore是一种可分享boolean变量，而其变量会告诉想把它利用的过程什么时候确实有任何可分享值。到那时候，读取其特别的变量会读取的过程停止，除非变量被其他过程被改变了，才读取的过程会执行下去。
 
 {% highlight C++ linenos %}
 #include <driver/gpio.h>
@@ -208,3 +230,14 @@ extern "C" void app_main(void) {
   gpio_isr_handler_add(BUTTON_GPIO, button_isr_handler, nullptr);
 }
 {% endhighlight %}
+
+![下降沿](/assets/2019-11-06-esp-idf-2/intr-nice.png)
+
+<div class="myvideo">
+   <video  style="display:block; width:100%; height:auto;" controls loop="false">
+       <source src="{{ site.baseurl }}/assets/2019-11-06-esp-idf-2/intr-bounce.mp4" type="video/mp4" />
+   </video>
+</div>
+
+![下降沿](/assets/2019-11-06-esp-idf-2/intr-bounce.png)
+![下降沿](/assets/2019-11-06-esp-idf-2/intr-debounce.png)
