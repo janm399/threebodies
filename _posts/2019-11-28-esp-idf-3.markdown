@@ -89,7 +89,7 @@ typedef union {
 } rgb_t;
 {% endhighlight %}
 
-好像只唯一剩下的事是最简单来传输随着正确时间的信号：调用`gpio_set_level`加上几个合适`delay`函数就好了。我们预计看见下个视频所示的颜色顺序。
+好像只唯一剩下的事是最简单来（随着正确时间）传输信号：调用`gpio_set_level`加上几个合适`delay`函数就好了。我们预计的结果是类似于下面的视频中的颜色顺序。
 
 {% highlight C++ linenos %}
 void ws2812_naive_set(const int pixel_count, const rgb_t* pixels) {
