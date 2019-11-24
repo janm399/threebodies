@@ -77,10 +77,41 @@ excerpt: "???"
 ![红四](/assets/2019-11-30-esp-idf-3/red.png)
 
 # ESP32实现
-我们知道如何传输适合2812的信号，把2812接上某一个ESP32输入脚后，还需要现实传输信号的代码。好像只剩下仔细实现办理时间的代码即可。
+我们知道如何传输适合2812的信号，把2812接上某一个ESP32输入脚后，还需要现实传输信号的代码。好像只剩下仔细实现办理时间的代码即可。为了更方便地表达三个颜色，我们下定义`rgb_t`结构体，该结构体不仅仅包含三个颜色、而且包含另一个结合独立颜色的字段。因此，该结构体的大小相当$$24b$$，而它它提供`r`、`g`、`b`字段和它门三个结合表现。
 
 {% highlight C++ linenos %}
+typedef union {
+  struct __attribute__((packed)) {
+    uint8_t r, g, b;
+  };
+  uint32_t num;
+} rgb_t;
+{% endhighlight %}
 
+好像只唯一剩下的事是最简单来传输随着正确时间的信号：调用`gpio_set_level`加上几个合适`delay`就好了。
+
+{% highlight C++ linenos %}
+void ws2812_naive_set(const int pixel_count, const rgb_t* pixels) {
+  gpio_set_level(LED_STRIP_GPIO, 0);
+  delay_nanoseconds(50000);
+
+  for (uint8_t i = 0; i < pixel_count; i++) {
+    const auto pixel = pixels[i].num;
+    for (uint8_t j = 0; j < 24; j++) {
+      if (((pixel >> j) & 1) != 0) {
+        gpio_set_level(LED_STRIP_GPIO, 1);
+        delay_nanoseconds(1000);
+        gpio_set_level(LED_STRIP_GPIO, 0);
+        delay_nanoseconds(250);
+      } else {
+        gpio_set_level(LED_STRIP_GPIO, 1);
+        delay_nanoseconds(1000);
+        gpio_set_level(LED_STRIP_GPIO, 0);
+        delay_nanoseconds(250);
+      }
+    }
+  }
+}
 {% endhighlight %}
 
 2812 LED元件的智能、包含控制电路的LED
