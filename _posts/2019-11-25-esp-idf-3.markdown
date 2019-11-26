@@ -99,7 +99,7 @@ typedef union {
    </video>
 </div>
 
-因为2812是个big endian，可是ESP32是个big endian，因此我们需要把每一个颜色字段变成big endian，从而下面的代码包含endian变成的行8、9、10，这也是传输代码唯一个难点。
+因为2812是个big endian，可是ESP32是个little endian，因此我们需要把每一个颜色字段变成big endian，所以下面的代码包含endian变成的行8、9、10，这也是传输的代码唯一个难点。big endian的意思是整数是于最重要比特开始的，比如使用big endian的系统会以223——$$8b$$装下的值——为$$00100010011$$，反而little endian会223当同于$$11001000100$$。
 
 {% highlight C++ linenos %}
 void ws2812_naive_set(const int pixel_count, const rgb_t* pixels) {
