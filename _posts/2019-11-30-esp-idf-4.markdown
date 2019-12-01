@@ -122,8 +122,10 @@ void ws2812_rmt::operator<<(const std::vector<rgb_t> &items) const {
     colour_to_rmt(item.r, rmt_items);
     colour_to_rmt(item.b, rmt_items);
   }
-  ESP_ERROR_CHECK(
-      rmt_write_items(this->channel, rmt_items.data(), rmt_items.size(), true));
+  rmt_write_items(this->channel, 
+                  rmt_items.data(), 
+                  rmt_items.size(), 
+                  true);
 }
 {% endhighlight %}
 
