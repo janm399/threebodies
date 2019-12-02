@@ -29,11 +29,11 @@ void ws2812_rmt_set(const rgb_t *pixels, const uint count);
 
 {% highlight c++ linenos %}
 void ws2812_rmt_init(const gpio_num_t gpio,
-      const rmt_channel_t channel = RMT_CHANNEL_0,
-      const uint8_t mem_block_num = 1);
+  const rmt_channel_t channel = RMT_CHANNEL_0,
+  const uint8_t mem_block_num = 1);
 void ws2812_rmt_set(const rgb_t *pixels,
-      const uint count,
-      const rmt_channel_t channel = RMT_CHANNEL_0);
+  const uint count,
+  const rmt_channel_t channel = RMT_CHANNEL_0);
 {% endhighlight %}
 
 为了提供最方便的接口设计，新加上的参数是提供默认值，即`rmt_channel_t channel = RMT_CHANNEL_0`和`uint8_t mem_block_num = 1`；这样，在最简单情况下不需要改变调用其两个函数的代码。
