@@ -21,31 +21,27 @@ hidden: true
 
 {% highlight c++ linenos %}
 void ws2812_rmt_init(const gpio_num_t gpio);
-void ws2812_rmt_set(const rgb_t *items, const uint count);
+void ws2812_rmt_set(const rgb_t *pixels, const uint count);
 {% endhighlight %}
 
-使用方法跟已存在的函数完全一样；但既然我们来探索新实现方式，我们就可以考虑一下如何使用现代C++功能，因此我们会把一般指针代替`std::vector`。从该函数（的类型！）可以看出该函数无法控制两个（或者更多）2812元件：虽然我们还没考虑其两个函数中的代码，但从它们的参数类型、从它们的返回类型可以推理下面所示的代码只支持唯一个输出，唯一个所谓RMT channel。实现其两个函数之前，最好把接口改变一下，如下面源码所示。
+从其两个函数的参数类型、从它的返回类型可以所推理的是虽然`ws2812_rmt_init`**好像**支持几个输出，但`ws2812_rmt_set`无法从它的参数知道该控制哪一个输出。其实，由于ESP32中的RMT结构，二者函数的参数以完全设置ESP32中的RMT模块不够，更仔细地探索RMT接口我们会发现还需要定义`rmt_channel_t`和`mem_block_num`参数，如下面源码所示。
 
 {% highlight c++ linenos %}
-class ws2812_rmt {
- private:s
-  rmt_channel_t channel;
-
- public:
-  ws2812_rmt(const gpio_num_t gpio, 
-             const rmt_channel_t channel = RMT_CHANNEL_0,
-             const uint8_t mem_block_num = 1);
-  void operator<<(const std::vector<rgb_t> &items) const;
-};
+void ws2812_rmt_init(const gpio_num_t gpio,
+                     const rmt_channel_t channel = RMT_CHANNEL_0,
+                     const uint8_t mem_block_num = 1);
+void ws2812_rmt_set(const rgb_t *pixels,
+                    const uint count,
+                    const rmt_channel_t channel = RMT_CHANNEL_0);
 {% endhighlight %}
 
-虽然该对象的使用方法真太简单了，随着一般C++方式我们难免写像下面的代码。
+为了提供最方便的接口设计，新加上的参数是提供默认值，即`rmt_channel_t channel = RMT_CHANNEL_0`和`uint8_t mem_block_num = 1`；这样，在最简单情况下不需要改变调用其两个函数的代码。
 
 {% highlight c++ linenos %}
-ws2812_rmt ws2812(LED_STRIP_GPIO);
-std::vector<rgb_t> pixels(8);
+ws2812_rmt_init(LED_STRIP_GPIO);
+rgb_t[8] pixels;
 ...
-ws2812 << pixels;
+ws2812_rmt_set(pixels, 8);
 {% endhighlight %}
 
 ## ws2812_rmt实现
@@ -62,9 +58,9 @@ ws2812 << pixels;
 static constexpr const uint32_t ds = 10;
 static constexpr const uint32_t dl = 80;
 
-ws2812_rmt::ws2812_rmt(const gpio_num_t gpio, 
-                       const rmt_channel_t channel,
-                       const uint8_t mem_block_num) {
+void ws2812_rmt_init(const gpio_num_t gpio,
+                     const rmt_channel_t channel,
+                     const uint8_t mem_block_num) {
   rmt_config_t config;
   config.rmt_mode = RMT_MODE_TX;
 
@@ -112,20 +108,25 @@ const rmt_item32_t bit0  = { { {ds, 1, dl, 0} } };
 const rmt_item32_t bit1  = { { {dl, 1, ds, 0} } };
 {% endhighlight %}
 
+唯一个任务还剩下来实现的是，`ws2812_rmt_set`。
+
+![2812数据传输2](/assets/2019-12-01-esp-idf-4/rmt_conv.png)
 
 {% highlight c++ linenos %}
-void ws2812_rmt::operator<<(const std::vector<rgb_t> &items) const {
-  std::vector<rmt_item32_t> rmt_items;
-  rmt_items.emplace_back(reset);
-  for (const auto &item : items) {
-    colour_to_rmt(item.g, rmt_items);
-    colour_to_rmt(item.r, rmt_items);
-    colour_to_rmt(item.b, rmt_items);
+void ws2812_rmt_set(const rgb_t *pixels,
+                    const uint count,
+                    const rmt_channel_t channel) {
+  const uint rmt_items_size = count * 3 * 8 + 1;
+  rmt_item32_t rmt_items[rmt_items_size];
+  rmt_item32_t *rmt_items_head = rmt_items;
+  *rmt_items_head++ = reset;
+  for (uint i = 0; i < count; i++, rmt_items_head += 24) {
+    const auto &pixel = pixels[i];
+    colour_to_rmts(pixel.g, rmt_items_head);
+    colour_to_rmts(pixel.r, rmt_items_head + 8);
+    colour_to_rmts(pixel.b, rmt_items_head + 16);
   }
-  rmt_write_items(this->channel, 
-                  rmt_items.data(), 
-                  rmt_items.size(), 
-                  true);
+  rmt_write_items(channel, rmt_items, rmt_items_size, true);
 }
 {% endhighlight %}
 
