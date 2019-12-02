@@ -56,9 +56,6 @@ ws2812_rmt_set(pixels, 8);
 为了算好RMT的参数只需要知道RMT时钟源的频率，即$$80MHz$$；这使时钟同期$$f=80MHz \Rightarrow T=12.5ns$$，从而延时$$125ns$$和$$1000ns$$的时间，分别要设置10个和80个时钟同期。
 
 {% highlight c++ linenos %}
-static constexpr const uint32_t ds = 10;
-static constexpr const uint32_t dl = 80;
-
 void ws2812_rmt_init(const gpio_num_t gpio,
                      const rmt_channel_t channel,
                      const uint8_t mem_block_num) {
@@ -104,9 +101,9 @@ void ws2812_rmt_init(const gpio_num_t gpio,
 const uint32_t ds = 10;
 const uint32_t dl = 80;
 const uint32_t rs = 2000;
-const rmt_item32_t reset = { { {rs, 0, rs, 0} } };
-const rmt_item32_t bit0  = { { {ds, 1, dl, 0} } };
-const rmt_item32_t bit1  = { { {dl, 1, ds, 0} } };
+const rmt_item32_t reset = {rs, 0, rs, 0};
+const rmt_item32_t bit0  = {ds, 1, dl, 0};
+const rmt_item32_t bit1  = {dl, 1, ds, 0};
 {% endhighlight %}
 
 现在我们有所有的细节为了实现`ws2812_rmt_set`函数，该函数负责两个人物：则把`rgb_t`变换成`rmt_item32_t`，则把刚刚变换的结构体传送RMT接口，如下面的图所示。
