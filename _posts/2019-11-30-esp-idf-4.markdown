@@ -117,7 +117,7 @@ const rmt_item32_t bit1  = { { {dl, 1, ds, 0} } };
 
 ![2812数据传输2](/assets/2019-12-01-esp-idf-4/rmt_conv_ptr.png)
 
-随着上面图中的概念，只需要把它翻译成C++代码，当然我们需要实现其`colour_to_rmts`：像素的颜色`uint8_t`值变换的函数，如下面源码所示。
+随着上面图中的概念，只需要把它翻译成C++代码，当然我们还需要去实现其`colour_to_rmts`：像素的颜色`uint8_t`值变换的函数，如下面源码所示。
 
 {% highlight c++ linenos %}
 void colour_to_rmts(const uint8_t colour, rmt_item32_t *items) {
