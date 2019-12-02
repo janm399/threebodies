@@ -29,11 +29,11 @@ void ws2812_rmt_set(const rgb_t *pixels, const uint count);
 
 {% highlight c++ linenos %}
 void ws2812_rmt_init(const gpio_num_t gpio,
-                     const rmt_channel_t channel = RMT_CHANNEL_0,
-                     const uint8_t mem_block_num = 1);
+      const rmt_channel_t channel = RMT_CHANNEL_0,
+      const uint8_t mem_block_num = 1);
 void ws2812_rmt_set(const rgb_t *pixels,
-                    const uint count,
-                    const rmt_channel_t channel = RMT_CHANNEL_0);
+      const uint count,
+      const rmt_channel_t channel = RMT_CHANNEL_0);
 {% endhighlight %}
 
 为了提供最方便的接口设计，新加上的参数是提供默认值，即`rmt_channel_t channel = RMT_CHANNEL_0`和`uint8_t mem_block_num = 1`；这样，在最简单情况下不需要改变调用其两个函数的代码。
@@ -80,7 +80,7 @@ void ws2812_rmt_init(const gpio_num_t gpio,
 }
 {% endhighlight %}
 
-上面的源码定义（为了设置RMT所需的）`rmt_config_t`结构体的字段中最重要是`channel`、`gpio_num`、`mem_block_num`、`clk_div`，其他字段应该是简单地了解的。ESP32提供7个独立RMT channels，每一个RMT channel都可以采用不一样的参数，当然需要采用不一样的输出、不一样的`mem_block_num`。最后一个参数——`clk_div`——定义如何从RMT时钟源来取得RMT channel的时钟，RMT channel的时钟源频率相当$$80MHz/clk_div$$，也就是说定义最短一段时间被其RMT channel支持的。我们使用的`clk_div = 1`所定义是其RMT channel的时钟源相当RMT时钟源，因此最短一段时间等于$$12.5ns$$。我们终于可以实现传送跟着2812的协议的代码，该代码只需要构建合适`rmt_item32_t`对象，然后调用`rmt_write_items`即可。`rmt_item32_t`结构体所定义是被传送的信号，该结构体包含四个字段：`duration0`、`level0`、`duration1`、`level1`，如下面图所示。
+上面的源码定义（为了设置RMT所需的）`rmt_config_t`结构体的字段中最重要是`channel`、`gpio_num`、`mem_block_num`、`clk_div`，其他字段应该是简单地了解的。ESP32提供7个独立RMT channels，每一个RMT channel都可以采用不一样的参数，当然需要采用不一样的输出、不一样的`mem_block_num`。最后一个参数——`clk_div`——定义如何从RMT时钟源来取得RMT channel的时钟，RMT channel的时钟源频率相当$$80MHz/clk\_div$$，也就是说定义最短一段时间被其RMT channel支持的。我们使用的`clk_div = 1`所定义是其RMT channel的时钟源相当RMT时钟源，因此最短一段时间等于$$12.5ns$$。我们终于可以实现传送跟着2812的协议的代码，该代码只需要构建合适`rmt_item32_t`对象，然后调用`rmt_write_items`即可。`rmt_item32_t`结构体所设置是如何把输入参数变换成传送的信号，该结构体包含四个字段：`duration0`、`level0`、`duration1`、`level1`，如下面图所示。
 
 <!--
 {signal: [
