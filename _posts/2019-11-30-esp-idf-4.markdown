@@ -106,7 +106,7 @@ const rmt_item32_t bit0  = {ds, 1, dl, 0};
 const rmt_item32_t bit1  = {dl, 1, ds, 0};
 {% endhighlight %}
 
-现在我们有所有的细节为了实现`ws2812_rmt_set`函数，该函数负责两个人物：则把`rgb_t`变换成`rmt_item32_t`，则把刚刚变换的结构体传送RMT接口，如下面的图所示。
+现在我们有所有的细节为了实现`ws2812_rmt_set`函数，该函数负责两个任务：则把`rgb_t`变换成`rmt_item32_t`，则把刚刚变换的结构体传送RMT接口，如下面的图所示。
 
 ![2812数据传输2](/assets/2019-12-01-esp-idf-4/rmt_conv.png)
 
