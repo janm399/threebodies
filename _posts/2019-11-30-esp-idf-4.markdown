@@ -25,7 +25,7 @@ void ws2812_rmt_init(const gpio_num_t gpio);
 void ws2812_rmt_set(const rgb_t *pixels, const uint count);
 {% endhighlight %}
 
-从其两个函数的参数类型、从它的返回类型可以所推理的是虽然`ws2812_rmt_init`**好像**支持几个输出，但`ws2812_rmt_set`无法从它的参数知道该控制哪一个输出。其实，由于ESP32中的RMT结构，二者函数的参数以完全设置ESP32中的RMT模块不够，更仔细地探索RMT接口我们会发现还需要定义`rmt_channel_t`和`mem_block_num`参数，如下面源码所示。
+从其两个函数的参数类型、从它的返回类型可以所推理的是虽然`ws2812_rmt_init`**好像**支持几个输出，但`ws2812_rmt_set`无法从它的参数知道该控制哪一个输出。其实，由于ESP32中的RMT结构，二者函数的参数对设置好ESP32中的RMT模块不够，更仔细地探索RMT接口我们会发现还需要加上`rmt_channel_t`和`mem_block_num`参数，如下面源码所示。
 
 {% highlight c++ linenos %}
 void ws2812_rmt_init(const gpio_num_t gpio,
