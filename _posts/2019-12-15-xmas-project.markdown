@@ -42,6 +42,8 @@ excerpt: "***"
     </scene>
 </babylon>
 
+如果你想把模型打印出来，下载[容器3D结构STL]({{ site.baseurl }}/assets/2019-12-15-xmas-project/box.stl)和[容器图样PDF]({{ site.baseurl }}/assets/2019-12-15-xmas-project/box.pdf)。
+
 # 硬件设计
 
 # 固件设计
