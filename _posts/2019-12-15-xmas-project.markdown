@@ -75,7 +75,7 @@ excerpt: "***"
 唯一个元件上面电路图不所示是Qi无线充电接收器，该元件可以直接上到LiPO元件`IN+`、`IN-`的输入。为了简单化改修过程，最好在电池和LiPO元件的中间接上一个接头。
 
 # 固件设计
-最简单固件实现方法是在忙碌循环中测量人体外红传感器值；若有人再来测量光亮度传感器值；若二者传感器值都在合适范围其中，就逐渐开灯。开灯后，延时一定一段时间，接下来关灯。不过，问题来了：随着我们已经提供的减少功耗需求，我们最好避免忙碌循环，因为忙碌循环会阻止处理器进入某些低功耗状态（通常由减低处理器核的时钟源频率）。因此，与其依靠忙碌循环，不如利用GPIO中断。尤其中断会自动将处理器低功耗状态成为到高的。
+最简单固件实现方法是在忙碌循环中测量人体外红传感器值；若有人再来测量光亮度传感器值；若二者传感器值都在合适范围其中，就逐渐开灯。开灯后，延时一定一段时间，接下来关灯。
 
 我们一步一步来实现固件需要的代码吧。首先我们需要决定如何上传固件。跟一般Arduino不同的是我们不会直接来烧录固件，由于ATtiny不包含USB接口。我们需要使用一个烧录器，要么JTAG烧录器，要么另一个Arduino，比如Arduino nano。其JTAG烧录器确实不复杂，如下面的电路图所示。
 
@@ -104,7 +104,7 @@ upload_port = ${common.port}
 upload_speed = 19200
 {% endhighlight %}
 
-最重要的是配置好ISP协议、ISP接口；你的设备一定不一样，特别是`port`，在Linux或者macos下，该上传的接口会随着`/dev/cu.wchusbserial####`，其中`####`是一个数字列。请注意，除了`port`和`upload_protocol`以外，该`platform.ini`需要定义处理器的时钟源的频率，即$$8MHz$$（更低频率会影响控制2812的框架，尤其影响我们能控制都少像素）。配置完Platform IO可以测试能否烧录最简单固件，按照Arduino框架，该最简单固件必须包含两个函数：`setup()`和`loop()`。Arduino框架会处理器启动时执行`setup()`函数，在一般情况下，该函数负责配置所有所需的接口，即接口的输入，输出状态。`setup()`执行完，Arduino框架会不断执行`loop()`函数。
+最重要的是配置好ISP协议、ISP接口；你的设备一定不一样，特别是`port`，在Linux或者macos下，该上传的接口会随着`/dev/cu.wchusbserial####`模式，其中`####`是一个数字列。请注意，除了`port`和`upload_protocol`以外，该`platform.ini`需要定义处理器的时钟源的频率，即$$8MHz$$（更低频率会影响控制2812的框架，尤其影响我们能控制都少像素）。配置完Platform IO可以测试能否烧录最简单固件，按照Arduino框架，该最简单固件必须包含两个函数：`setup()`和`loop()`。Arduino框架会处理器启动时执行`setup()`函数，在一般情况下，该函数负责配置所有所需的接口，即接口的输入，输出状态。`setup()`执行完，Arduino框架会不断执行`loop()`函数。
 
 {% highlight C++ %}
 #include <Arduino.h>
@@ -142,11 +142,116 @@ Reading | ################################################## | 100% 0.51s
 =================== [SUCCESS] Took 4.16 seconds ===================
 {% endhighlight %}
 
-成功后，我们需要考虑如何安装中断办理的函数、如何读取外红人体传感器输出、如何读取范围光亮值、如何控制2812。一来要解决最麻烦的任务，即中断办理设计。与ESP32相反，ATtiny不仅仅只有一个管理GPIO的中断，而且实现ATtiny固件时无法利用Arduino框架提供的`attachInterrupt`函数。
+成功后，好像只剩下把人体外红传感器信号的代码和一样简单的范围光亮传感器信号放在`void loop()`函数里即可，如下面代码所示。
 
+{% highlight C++ %}
+void lightCycle() {
+  // 使用一个2812框架为了控制在LED_OUTPUT接上的2812
+
+  // 增加2812发光的强度从0到`maxBrightness`
+  for (int i = 0; i < maxBrightness; i++) FastLED.setBrightness(i);
+  delay(x);
+  // 减少2812发光的强度，最终到0
+  for (int i = maxBrightness; i >= 0; i--) FastLED.setBrightness(i);
+}
+
+void loop() {
+  if (digitalRead(PIR_PIN) == HIGH) {
+    // 有人
+    if (analogRead(LIGHT_SENSOR_PIN) < 200) {
+      // 夜间--也是说范围光亮比较低
+      lightCycle();
+    }
+  }
+}
+{% endhighlight %}
+
+不过，问题来了：随着我们已经提供的减少功耗需求，我们最好避免忙碌循环，因为忙碌循环会阻止处理器进入某些低功耗状态（通常由减低处理器核的时钟源频率）。因此，与其依靠忙碌循环，不如利用GPIO中断。尤其中断会自动将处理器低功耗状态成为到高的。
+
+<!--
 真的假的？
 从ATtiny中断的硬件可见的是每一个GPIO都支持外部中断，可是唯一个GPIO可以由可配置的电平变化触发中断是`PB2`。所以，人体外红传感器最好被接上到`PB2`中，范围光亮传感器最好北接上到`PB5`中。
+-->
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.bundle.min.js"></script>
 
+如下面图表所示，处理器功耗其实不太高，不过我们还需要加所有的其他元件的功耗，结果电路的最高功耗相当$$360 mA$$。如果我们把忙碌循环方式代替中断方式，接下来使处理器进入睡眠状态；不仅如此，如果我们以某种方式减少2812在不发光状态下的功耗，我们可以节约$$360 - 341 = 19mA$$。
+<canvas id="power1"></canvas>
+
+这样比较小减少好像没有特别大影响，从更仔细功耗分析可见进行的时间是最重要一点：虽然2812在发光状态下消耗最高电量，但在它在其状态非常短一段时间。我们可以估计每一夜间2812会在发光状态下花6分钟。所以，如下面图表所示，不发光时使处理器与2812进入一种睡眠状态会非常增加不需要充电的寿命：仔细电源管理会把寿命增加十倍。假设机器利用$$4000mAh$$电池，以电源管理代码会把寿命增加到十个星期。
+<canvas id="power2"></canvas>
+
+<script language="javascript">
+const mcuHigh = 7.5;
+const mcuLow = 0.1
+const pir = 1.1;
+const ledOff = 13;
+const ledOn = 340;
+const W = 168;
+const N = 0.6;
+const c1 = "#46346788";
+const c2 = "#E73D3C88";
+const c3 = "#D4B58C44";
+const c4 = "#D4B58Cff";
+
+new Chart(document.getElementById("power1").getContext('2d'), {
+  type: "horizontalBar",
+  data: {
+    labels: ["目前功耗（A）", 
+             "目前功耗（B）"],
+    datasets: [
+      { label: "处理器",      data: [mcuHigh, mcuLow], backgroundColor: c1 },
+      { label: "外红传感器",  data: [pir,     pir],    backgroundColor: c2 },
+      { label: "2812 不发光", data: [ledOff,  0],      backgroundColor: c3 },
+      { label: "2812 发光",   data: [ledOn,   ledOn],  backgroundColor: c4 }
+    ]
+  },
+  options: {
+    scales: {
+        xAxes: [{
+            stacked: true,
+            ticks: {
+                userCallback: function(item) {
+                    return item + " mA";
+                },
+            }
+        }],
+        yAxes: [{
+            stacked: true,
+        }]
+    }
+  }
+});
+new Chart(document.getElementById("power2").getContext('2d'), {
+  type: "horizontalBar",
+  data: {
+    labels: ["一周功耗（A）", 
+             "一周功耗（B）"],
+    datasets: [
+      { label: "处理器",      data: [W * mcuHigh, W * mcuLow], backgroundColor: c1 },
+      { label: "外红传感器",  data: [W * pir,     W * pir],    backgroundColor: c2 },
+      { label: "2812 不发光", data: [W * ledOff,  0],          backgroundColor: c3 },
+      { label: "2812 发光",   data: [N * ledOn, N * ledOn],    backgroundColor: c4 }
+    ]
+  },
+  options: {
+    scales: {
+        xAxes: [{
+            stacked: true,
+            ticks: {
+                userCallback: function(item) {
+                    return item + " mAh";
+                },
+            }
+        }],
+        yAxes: [{
+            stacked: true
+        }]
+    }
+  }
+});
+</script>
+
+我们现在需要考虑如何安装中断办理的函数、如何读取外红人体传感器输出、如何读取范围光亮值、如何控制2812。一来要解决最麻烦的任务，即中断办理设计。与ESP32不同，ATtiny不仅仅只有一个管理GPIO的中断，而且实现ATtiny固件时无法利用Arduino框架提供的`attachInterrupt`函数。
 
 # Demo
