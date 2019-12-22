@@ -333,6 +333,99 @@ void loop() {
 }
 {% endhighlight %}
 
-如此好像一切
+这就是解决了吗？可惜的是还没有：虽然硬件与固件能够控制2812的电源，但测量电流还所揭示的是整个电路功耗还以上$$11mA$$，比预期的高几乎$$10mA$$。原来2812在没有VCC、数据输入的电平相当0的情况下，电流会从数据输入流到GND。好在，该问题可以简单地办理：只需要ATtiny的2812数据输出中的电平改变成高电平即可。因此，下面列所示的是最终源码。
 
-# Demo
+{% highlight C++ %}
+#include <Arduino.h>
+#include <FastLED.h>
+#include <avr/interrupt.h>
+#include <avr/power.h>
+#include <avr/sleep.h>
+
+#define LED_STRIP_PIN 3
+#define PIR_SENSOR_PIN 4
+#define LED_STIP_POWER_PIN 1
+#define LIGHT_SENSOR_PIN A0
+
+static const int maxBrightness = 200;
+static const int peeDelay = 10000;
+static const int lightTrigger = 400;
+
+static volatile bool lightUp = false;
+static const int LED_COUNT = 29;
+static CRGB leds[LED_COUNT];
+static CRGB colour = CRGB(0xff4700);
+
+void setColour() {
+  for (int i = 0; i < LED_COUNT; i++) leds[i] = colour;
+}
+
+ISR(PCINT0_vect) { lightUp = true; }
+
+void setup() {
+  clock_prescale_set(clock_div_1);
+  pinMode(PIR_SENSOR_PIN, INPUT);
+  pinMode(LED_STIP_POWER_PIN, OUTPUT);
+  pinMode(3, OUTPUT);
+
+  FastLED.addLeds<NEOPIXEL, LED_STRIP_PIN>(leds, LED_COUNT);
+  setColour();
+  FastLED.setBrightness(0);
+  FastLED.show();
+}
+
+void sleep() {
+  GIMSK = _BV(PCIE);
+  PCMSK = _BV(PIR_SENSOR_PIN);
+  ADCSRA &= ~_BV(ADEN);
+  MCUCR |= _BV(ISC01) | _BV(ISC00); 
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+
+  sleep_enable();
+  sei();
+  sleep_cpu();
+
+  cli();
+  PCMSK &= ~_BV(PIR_SENSOR_PIN);
+  sleep_disable();
+  ADCSRA |= _BV(ADEN);
+
+  sei();
+}
+
+void loop() {
+  digitalWrite(LED_STRIP_PIN, 1);
+  digitalWrite(LED_STIP_POWER_PIN, 0);
+  sleep();
+  digitalWrite(LED_STRIP_PIN, 0);
+  delay(100);
+  const auto light = analogRead(A1);
+  if (lightUp) {
+    if (light < lightTrigger) {
+      digitalWrite(LED_STIP_POWER_PIN, 1);
+      delay(10);
+      setColour();
+      for (int i = 0; i < maxBrightness; i += 4) {
+        FastLED.setBrightness(i);
+        FastLED.show();
+        delay(80);
+      }
+      delay(peeDelay);
+      for (int i = maxBrightness; i >= 0; i--) {
+        FastLED.setBrightness(i);
+        FastLED.show();
+        delay(200);
+      }
+    }
+    lightUp = false;
+    digitalWrite(LED_STIP_POWER_PIN, 0);
+  }
+}
+{% endhighlight %}
+
+# 最终结果
+![](/assets/2019-12-15-xmas-project/d0.jpeg)
+![](/assets/2019-12-15-xmas-project/d1.jpeg)
+![](/assets/2019-12-15-xmas-project/d2.jpeg)
+
+与其他帖子一样，我们把所有的源码，包含3D设计，放在[GitHub上面](https://github.com/janm399/nightlight)。
