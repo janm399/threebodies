@@ -1,9 +1,9 @@
 ---
 layout: post
-title:  "好用圣诞节项目"
-date:   2019-12-14 18:00:00 +0000
+title:  "好用圣诞节的项目"
+date:   2019-12-26 18:00:00 +0000
 categories: [HW, SW]
-excerpt: "***"
+excerpt: "圣诞节的项目是一个小夜间的灯，该灯会自动打开，自动关闭；与ESP32项目不同的是本项目不仅仅包括硬、软件设计，而去还包含可打印的3D模型"
 ---
 本帖子所谈是特别好用圣诞节项目，至少在nerd看来特别好用项目。基本上项目的能力很简单：它是一个夜间小灯，很多人夜间中上厕所时不想开大灯（因为太亮了），该小灯的光不仅仅不太亮，而且光颜色适合夜间。因此，本项目的需求包括：
 
@@ -20,13 +20,13 @@ excerpt: "***"
 # 3D设计
 项目不仅仅需要硬件和固件，而且还需要一个相应容器。该容器的设计必须提供足够内部空间以装下所有的元件，尤其无线充电接收器；外部必须提供相应空间为了安装2812。最终，该容器还需要让我们安装向外部“看着”的人体外红传感器。随着最大元件（无线充电接收器）的大小，内部尺寸是$$85mm$$乘$$40.5mm$$；人体外红传感器的容器是一个有$$25mm$$高、$$25mm$$直径的半球形结构，如下面图样所示。
 
-![](/assets/2019-12-15-xmas-project/box.png)
+![](/assets/2019-12-26-xmas-project/box.png)
 
 该盒子有三个配件，盖子和内部盒子是使用一般PLA打印出的，外部的带子是使用透明PLA打印出的。下面视频所示是如何把其三个配件装配在一起。
 
 <div class="myvideo">
    <video  style="display:block; width:100%; height:auto;" controls loop="false">
-       <source src="{{ site.baseurl }}/assets/2019-12-15-xmas-project/box.mp4" type="video/mp4" />
+       <source src="{{ site.baseurl }}/assets/2019-12-26-xmas-project/box.mp4" type="video/mp4" />
    </video>
 </div>
 
@@ -39,7 +39,7 @@ excerpt: "***"
 跟其他项目不同，我们首先来建立一个3D模型；一种盒子
 
 <babylon templates.main.params.fill-screen="true">
-    <model url="{{ site.baseurl }}/assets/2019-12-15-xmas-project/box.stl">
+    <model url="{{ site.baseurl }}/assets/2019-12-26-xmas-project/box.stl">
         <material material-type="standard">
             <diffuse-color r='1' g='0' b='0'></diffuse-color>
             <ambient-color r='1' g='0' b='0'></ambient-color>
@@ -51,7 +51,7 @@ excerpt: "***"
     </scene>
 </babylon>
 
-如果你想把模型打印出来，下载[容器3D结构STL]({{ site.baseurl }}/assets/2019-12-15-xmas-project/box.stl)和[容器图样PDF]({{ site.baseurl }}/assets/2019-12-15-xmas-project/box.pdf)。
+如果你想把模型打印出来，下载[容器3D结构STL]({{ site.baseurl }}/assets/2019-12-26-xmas-project/box.stl)和[容器图样PDF]({{ site.baseurl }}/assets/2019-12-26-xmas-project/box.pdf)。
 
 # 硬件设计
 一开始我们打算使用Arduino nano；虽然Arduino nano没有ESP32那么搞结算能力、那么多输入和输出脚，但是以控制一个2812、接收一个人体外红传感器输出、接收一个周围光亮度传感器输出；简单来说在输出和输入（一个数字输出、一个数字输入、一个模拟输入）上Arduino nano足够了。只不过，我们应该回想上面所提到的效率问题：即使本项目能够由Arduino nano实现的，我们应该再考虑是否有另外一个更合适MCU。原来有，即ATTiny组！
@@ -70,7 +70,7 @@ excerpt: "***"
 
 配合本项目的计算能力的需求、GPIO数的需求、尽量减少功耗的需求与可获得MCU。一时想象可获得的MCU只包括上面的表格所示的：在此情况下，可见相应MCU是ATTiny组。以决定哪一个具体ATtiny MCU该选择，首先要实现固件…… 这样恶性循环：为了知道如何来实现固件我们首先需要选好一个MCU，为了选好一个MCU我们首先需要编程好固件。好在，ATTiny MCU组中唯一个区别是MCU里（flash和RAM）内存大小，其他特性都完全一样。因此，一开始可以随便地选择，现实固件后再证实我们本来选的MCU是不是最合适的。结果，下面图所示是电路初期版本。
 
-![](/assets/2019-12-15-xmas-project/box-sch-v1.png)
+![](/assets/2019-12-26-xmas-project/box-sch-v1.png)
 
 唯一个元件上面电路图不所示是Qi无线充电接收器，该元件可以直接上到LiPO元件`IN+`、`IN-`的输入。为了简单化改修过程，最好在电池和LiPO元件的中间接上一个接头。
 
@@ -79,7 +79,7 @@ excerpt: "***"
 
 我们一步一步来实现固件需要的代码吧。首先我们需要决定如何上传固件。跟一般Arduino不同的是我们不会直接来烧录固件，由于ATtiny不包含USB接口。我们需要使用一个烧录器，要么JTAG烧录器，要么另一个Arduino，比如Arduino nano。其JTAG烧录器确实不复杂，如下面的电路图所示。
 
-![](/assets/2019-12-15-xmas-project/isp.png)
+![](/assets/2019-12-26-xmas-project/isp.png)
 
 接下来只需要配置PlatformIO，如下面的`platform.ini`文件所示。
 
@@ -308,7 +308,7 @@ void loop() {
 ### 硬件设计2
 因为ATtiny不能够支持2812的电源量要求，结果我们需要加一个晶体管，即可。下面图所示的我们重新考虑电路图。
 
-![](/assets/2019-12-15-xmas-project/box-sch-v2.png)
+![](/assets/2019-12-26-xmas-project/box-sch-v2.png)
 
 如上面电路图所示，以控制2812的电源，我们加上了一个晶体管、一个电阻器。如此以让2812发光，我们`PB1`中的电平变高，接下来用已实现的方法来发2812控制的信号。
 
@@ -424,8 +424,8 @@ void loop() {
 {% endhighlight %}
 
 # 最终结果
-![](/assets/2019-12-15-xmas-project/d0.jpeg)
-![](/assets/2019-12-15-xmas-project/d1.jpeg)
-![](/assets/2019-12-15-xmas-project/d2.jpeg)
+![](/assets/2019-12-26-xmas-project/d0.jpeg)
+![](/assets/2019-12-26-xmas-project/d1.jpeg)
+![](/assets/2019-12-26-xmas-project/d2.jpeg)
 
 与其他帖子一样，我们把所有的源码，包含3D设计，放在[GitHub上面](https://github.com/janm399/nightlight)。
