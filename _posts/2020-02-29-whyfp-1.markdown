@@ -22,12 +22,47 @@ hidden: true
 final case class DenseDataset(xs: Array[Double], ys: Array[Double]) {
   assert(xs.length == ys.length)
 }
+opaque type ExperimentId = String
 
 def calculateYoungModulus(data: DenseDataset): Double 
 def loadData(experimentId: ExperimentId): DenseDataset
 {% endhighlight %}
 
-即使这两个函数缺乏实现，我们还本能地知道`loadData`函数，虽然比`calculateYoungModulus`一定更容易，但是一定更”危险“。为什么呢？虽然我们英译得清楚，可是在一般情况下，`loadData`会依靠其他系统（比如某些数据库、某些文件，总之外在、无法控制的数据输入），而且即使外在系统完全可靠，`loadData`还无法保证`experimentId`是存不存在。再加时间，特别是该时间内的系统后者数据结构体的更新。突然`loadData`不仅仅需要管理外在系统的所有问题，而且还需要管理数的据兼容或变换。这些挑战虽然不特别复杂，但源码行数越多问题也越多。不仅如此，`loadData`的类型把这些问题完全无视，看该函数的类型我们无法知道怎它会么办理意外情况。如果`experimentId`不存在，它返回`null`吗？如果`experimentId`是存在的，可是数据的格式无法转换，它还返回`null`吗？如果数据库链接被破坏了，它还是返回`null`的吗？更可能的
+即使这两个函数缺乏实现，我们还本能地知道`loadData`函数，虽然比`calculateYoungModulus`一定更容易，但是一定更”危险“。为什么呢？虽然我们英译得清楚，可是在一般情况下，`loadData`会依靠其他系统（比如某些数据库、某些文件，总之外在、无法控制的数据输入），而且即使外在系统完全可靠，`loadData`还无法保证`experimentId`是存不存在。再加时间，特别是该时间内的系统后者数据结构体的更新。突然`loadData`不仅仅需要管理外在系统的所有问题，而且还需要管理数的据兼容或变换。这些挑战虽然不特别复杂，但源码行数越多问题也越多。不仅如此，`loadData`的类型把这些问题完全无视，看该函数的类型我们无法知道怎它会么办理意外情况。如果`experimentId`不存在，它返回`null`吗？如果`experimentId`是存在的，可是数据的格式无法转换，它还返回`null`吗？如果数据库链接被破坏了，它还是返回`null`的吗？更可能的是该函数会抛出异常，最好
+
+{% highlight scala %}
+/**
+ * Loads experiment data for experiment identified by its ID
+ *
+ * @param experimentId the experiment identifier
+ * @return the fully-loaded experiment data set
+ * @throws ExperimentNotFoundException if the experiment does not exist
+ */
+def loadData(experimentId: ExperimentId): DenseDataset = ???
+{% endhighlight %}
+
+行吧，虽然`loadData`的类型并不包括异常，我们可以通过ScalaDoc意识到`loadData`会跑出异常，即`ExperimentNotFoundException`。随着ScalaDoc，下面的代码应该完全地管理所有的意外情况。
+
+{% highlight scala %}
+/**
+ * Loads the experiment and performs the calculation
+ *
+ * @return the modulus
+ * @throws UnableToCalculateException if the young modulus cannot be calculated
+ */
+def run(): Double = {
+  val experimentId = ExperimentId("123")
+  try {
+    val data = loadData(experimentId)
+    calculateYoungModulus(data)
+  } catch {
+    case _: ExperimentNotFoundException => 
+      throw UnableToCalculateException(experimentId)
+  }
+}
+{% endhighlight %}
+
+上面的代码好像是随着一般Java的智慧，每一个层都需要管理下一层的异常，把它们变换到“更抽象”类型。让我们再看上面的代码吧：遇到了`UnableToCalculateException`把`run`调用者无法知道问题的来源，只知道结果是无法计算的。这样的代码必然地导致“哎呀，出事了”。什么事？能不能重试？对用户来说“出事了”的结果没用的：除了重试以外都不知道该怎么办，错误在哪里；对开发者或DevOps人员也没用的：除了重试都不知道错误的来源在哪里，无法去调试，无法调整。严重的是，这两个异常不是全部能遇到的异常，`loadData`一定使用其他库的，每一个库都有自己抛出的异常——我们没考虑的异常。再更严重的是，异常只是由ScalaDoc定义的[^1]！编写时编译器无法帮助我们发现哪里有危险，编译器所看见的是类型，`loadData`的类型是`ExperimentId -> DenseDataset`，好像纯函数！我们依靠我们的经历，经历是告诉我们`load`，这个词意味着某些输入/输出的行动，提醒我们要注意，要管理输入/输出的错误。假设我们把`loadData`重命令到`generateData`我们可能不意识到函数的输入/输出性。
 
 # 避免不确定性
 我们写的代码最好避免不确定性：不确定性在用户看来。。。函数式语言雨来应用透明来避免不确定，命令式语言依赖严格顺利来避免不确定性。与命令式语言不同的是，引用透明式、函数式的语言避免另外一个不确定性的根源：（可变的）状态。
@@ -51,7 +86,7 @@ object RT {
 
   import Domain._
   import Codomain._
-  def m1(d: Domain): Codomain = d match {
+  val m1: Domain => Codomain = _ match {
     case One | Two => Red
     case Three => Blue
   }
@@ -85,3 +120,5 @@ object RT {
 
 
 对比命令式和函数式
+
+[^1]: This is the first footnote.
