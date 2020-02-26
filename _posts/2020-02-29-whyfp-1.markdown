@@ -94,9 +94,14 @@ def loadData(experimentId: ExperimentId): Either[Throwable, DenseDataset] = ???
  * @param experimentId the experiment identifier
  * @return the fully-loaded experiment data set
  */
-def loadData(experimentId: ExperimentId): Either[Throwable, DenseDataset] = ???
+def loadData(experimentId: ExperimentId): Future[Either[Throwable, DenseDataset]] = ???
 {% endhighlight %}
 
+** 更抽象概念，把`Future`代替高级类型`F`
+** 实现高级类型的代数，使用typeclass来提供具体的进行环境
+** 配置线程池/进行的环境
+** 为什么不要用implicit参数，尤其implicit ExecutionContext
+** 测试性，测试的策略
 
 # 避免不确定性
 我们写的代码最好避免不确定性：不确定性在用户看来。。。函数式语言雨来应用透明来避免不确定，命令式语言依赖严格顺利来避免不确定性。与命令式语言不同的是，引用透明式、函数式的语言避免另外一个不确定性的根源：（可变的）状态。
