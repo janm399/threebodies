@@ -64,6 +64,40 @@ def run(): Double = {
 
 上面的代码好像是随着一般Java的智慧，每一个层都需要管理下一层的异常，把它们变换到“更抽象”类型。让我们再看上面的代码吧：遇到了`UnableToCalculateException`把`run`调用者无法知道问题的来源，只知道结果是无法计算的。这样的代码必然地导致“哎呀，出事了”。什么事？能不能重试？对用户来说“出事了”的结果没用的：除了重试以外都不知道该怎么办，错误在哪里；对开发者或DevOps人员也没用的：除了重试都不知道错误的来源在哪里，无法去调试，无法调整。严重的是，这两个异常不是全部能遇到的异常，`loadData`一定使用其他库的，每一个库都有自己抛出的异常——我们没考虑的异常。再更严重的是，异常只是由ScalaDoc定义的[^1]！编写时编译器无法帮助我们发现哪里有危险，编译器所看见的是类型，`loadData`的类型是`ExperimentId -> DenseDataset`，好像纯函数！我们依靠我们的经历，经历是告诉我们`load`，这个词意味着某些输入/输出的行动，提醒我们要注意，要管理输入/输出的错误。假设我们把`loadData`重命令到`generateData`我们可能不意识到函数的输入/输出性。
 
+<!-- 
+> 旁注：目录  
+> 你们可能在想：目录框架能否解决管理异常的问题？宁可担心`catch`、`throw`，也采用类似于`log.error`吗？ 
+-->
+
+## 第一个方法：更确切的返回类型
+让我们再考虑`loadData`的类型，参数的类型`ExperimentId`已经合适的，只剩下考虑返回的类型。在`loadData`遇到错误的情况下，它应该返回属于“错误”的值；在一般情况下，它应该返回属于“成功”的值。换句话说，`loadData`返回值要么是错误，要么是成功；英语，也Scala的“要么A，要么B”便是`Either[A, B]`。如下面的源码所示，`Either[A, B]`能够表达两种情况：错误和成功。
+
+{% highlight scala %}
+/**
+ * Loads experiment data for experiment identified by its ID
+ *
+ * @param experimentId the experiment identifier
+ * @return the fully-loaded experiment data set
+ */
+def loadData(experimentId: ExperimentId): Either[Throwable, DenseDataset] = ???
+{% endhighlight %}
+
+由调用`loadData`我们得到`Either[Throwable, DenseDataset]`值，我们可以验查刚刚返回值
+
+## 运行的环境，线程
+虽然`loadData`的返回类型能够表达错误和成功的情况，因为返回值是“一般”值，函函数不得不同步地进行，无法非同步地执行。不过，
+
+{% highlight scala %}
+/**
+ * Loads experiment data for experiment identified by its ID
+ *
+ * @param experimentId the experiment identifier
+ * @return the fully-loaded experiment data set
+ */
+def loadData(experimentId: ExperimentId): Either[Throwable, DenseDataset] = ???
+{% endhighlight %}
+
+
 # 避免不确定性
 我们写的代码最好避免不确定性：不确定性在用户看来。。。函数式语言雨来应用透明来避免不确定，命令式语言依赖严格顺利来避免不确定性。与命令式语言不同的是，引用透明式、函数式的语言避免另外一个不确定性的根源：（可变的）状态。
 
@@ -121,4 +155,4 @@ object RT {
 
 对比命令式和函数式
 
-[^1]: This is the first footnote.
+[^1]: Java是唯一个支持checked异常流行编程语言，checked异常意味着编译器将验查是否为所有的已检查异常提供了异常处理机制，而且每一个函数定义都必须包括所有可抛出的验查异常
