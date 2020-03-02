@@ -8,101 +8,30 @@ hidden: true
 ---
 我们常常听人说“命令式代码不好读，不好用，不流行，真是太糟糕了！” 只好使用函数式语言，才能够写最典雅的，最简洁的代码。” 听到这里你们一定在想世界上没有那么简单的答案，而且更仔细的想法会显示函数式语言的世界比命令式代码的世界一样复杂。不仅如此，在Tiobe最流行编程语言的榜单第二位置是C，古老的C！究竟函数式语言有什么好处？
 
-我们不能这么问，应该这样问：“为了实现最可靠的，最可维持的代码该怎么办？” 换句话说，最常遇到的问题是什么？首先，需要仔细地定义“问题”究竟意味着什么。
+# 函数式编程有什么好用？
+听函数式编程的演讲偶尔让我感觉有点不安：虽然我非常了解函数式编程的目的，非常了纯函数是吧输入映射输出，可是每一个演讲举的例子不要承认现实：事实上，我们写的代码只有很少的部分能够由纯函数来表达。你一定想得起来这些例子，如下面的代码所示。
 
-很合适的定义是[反应式宣言](https://www.reactivemanifesto.org/zh-CN)中的_即时响应性_和_回弹性_（真的？）
+{% highlight Scala %}
+// 快入门的demo
+def f(x: Int): Int = x * 2
+def g(x: Int): Int = x + 3
 
+// 把f，g两个函数一般地调用
+g(f(1))              // 返回的值 = 5
 
-本文只会讨论服务端或者后端的系统。。。
+// 或者更高级的方式，依靠着Function类所定义的andThen方法
+(f _ andThen g)(1)   // 返回的值 = 5
 
-# 意外输入、意外状态、意外外在的因素
-在我的经历上，我觉得最常遇到的问题来自于意外的输入，意外的状态、意外的外在因素；逻辑的后者算法的问题比前者罕见，而且逻辑或者算法问题比较容易地发现，容易地测试，调试。仔细地讲该问题以前，看下面的代码吧。
-
-{% highlight scala %}
-final case class DenseDataset(xs: Array[Double], ys: Array[Double]) {
-  assert(xs.length == ys.length)
-}
-opaque type ExperimentId = String
-
-def calculateYoungModulus(data: DenseDataset): Double 
-def loadData(experimentId: ExperimentId): DenseDataset
+// 或者更复杂
+final case class Person(name: String, age: Int)
+val people: List[Person] = ???
+people.maxBy(_.age)  // 返回的值 Person(?, ?)
 {% endhighlight %}
 
-即使这两个函数缺乏实现，我们还本能地知道`loadData`函数，虽然比`calculateYoungModulus`一定更容易，但是一定更”危险“。为什么呢？虽然我们英译得清楚，可是在一般情况下，`loadData`会依靠其他系统（比如某些数据库、某些文件，总之外在、无法控制的数据输入），而且即使外在系统完全可靠，`loadData`还无法保证`experimentId`是存不存在。再加时间，特别是该时间内的系统后者数据结构体的更新。突然`loadData`不仅仅需要管理外在系统的所有问题，而且还需要管理数的据兼容或变换。这些挑战虽然不特别复杂，但源码行数越多问题也越多。不仅如此，`loadData`的类型把这些问题完全无视，看该函数的类型我们无法知道怎它会么办理意外情况。如果`experimentId`不存在，它返回`null`吗？如果`experimentId`是存在的，可是数据的格式无法转换，它还返回`null`吗？如果数据库链接被破坏了，它还是返回`null`的吗？更可能的是该函数会抛出异常，最好
-
-{% highlight scala %}
-/**
- * Loads experiment data for experiment identified by its ID
- *
- * @param experimentId the experiment identifier
- * @return the fully-loaded experiment data set
- * @throws ExperimentNotFoundException if the experiment does not exist
- */
-def loadData(experimentId: ExperimentId): DenseDataset = ???
-{% endhighlight %}
-
-行吧，虽然`loadData`的类型并不包括异常，我们可以通过ScalaDoc意识到`loadData`会跑出异常，即`ExperimentNotFoundException`。随着ScalaDoc，下面的代码应该完全地管理所有的意外情况。
-
-{% highlight scala %}
-/**
- * Loads the experiment and performs the calculation
- *
- * @return the modulus
- * @throws UnableToCalculateException if the young modulus cannot be calculated
- */
-def run(): Double = {
-  val experimentId = ExperimentId("123")
-  try {
-    val data = loadData(experimentId)
-    calculateYoungModulus(data)
-  } catch {
-    case _: ExperimentNotFoundException => 
-      throw UnableToCalculateException(experimentId)
-  }
-}
-{% endhighlight %}
-
-上面的代码好像是随着一般Java的智慧，每一个层都需要管理下一层的异常，把它们变换到“更抽象”类型。让我们再看上面的代码吧：遇到了`UnableToCalculateException`把`run`调用者无法知道问题的来源，只知道结果是无法计算的。这样的代码必然地导致“哎呀，出事了”。什么事？能不能重试？对用户来说“出事了”的结果没用的：除了重试以外都不知道该怎么办，错误在哪里；对开发者或DevOps人员也没用的：除了重试都不知道错误的来源在哪里，无法去调试，无法调整。严重的是，这两个异常不是全部能遇到的异常，`loadData`一定使用其他库的，每一个库都有自己抛出的异常——我们没考虑的异常。再更严重的是，异常只是由ScalaDoc定义的[^1]！编写时编译器无法帮助我们发现哪里有危险，编译器所看见的是类型，`loadData`的类型是`ExperimentId -> DenseDataset`，好像纯函数！我们依靠我们的经历，经历是告诉我们`load`，这个词意味着某些输入/输出的行动，提醒我们要注意，要管理输入/输出的错误。假设我们把`loadData`重命令到`generateData`我们可能不意识到函数的输入/输出性。
-
-> 旁注：目录  
-> 你们可能在想：目录框架能否解决管理异常的问题？与其担心`catch`、`throw`，不如只用类似于`log.error`吗？大部分的系统毕竟包括一个整体的异常函数，该函数只好返回`HTTP 500`和把异常的细节放在日录里。
-
-## 第一个方法：更确切的返回类型
-让我们再考虑`loadData`的类型，参数的类型`ExperimentId`已经合适的，只剩下考虑返回的类型。在`loadData`遇到错误的情况下，它应该返回属于“错误”的值；在一般情况下，它应该返回属于“成功”的值。换句话说，`loadData`返回值要么是错误，要么是成功；英语，也Scala的“要么A，要么B”便是`Either[A, B]`。如下面的源码所示，`Either[A, B]`能够表达两种情况：错误和成功。
-
-{% highlight scala %}
-/**
- * Loads experiment data for experiment identified by its ID
- *
- * @param experimentId the experiment identifier
- * @return the fully-loaded experiment data set
- */
-def loadData(experimentId: ExperimentId): Either[Throwable, DenseDataset] = ???
-{% endhighlight %}
-
-由调用`loadData`我们得到`Either[Throwable, DenseDataset]`值，我们可以验查刚刚返回值
-
-## 运行的环境，线程
-虽然`loadData`的返回类型能够表达错误和成功的情况，因为返回值是“一般”值，函函数不得不同步地进行，无法非同步地执行。不过，
-
-{% highlight scala %}
-/**
- * Loads experiment data for experiment identified by its ID
- *
- * @param experimentId the experiment identifier
- * @return the fully-loaded experiment data set
- */
-def loadData(experimentId: ExperimentId): Future[Either[Throwable, DenseDataset]] = ???
-{% endhighlight %}
-
-* 更抽象概念，把具体高级类型`Future[A]`代替抽象高级类型`F[A]`
-* 实现高级类型的代数，使用typeclass来提供具体的进行环境
-* 配置线程池/进行的环境
-* 为什么不要用implicit参数，尤其implicit ExecutionContext
-* 测试性，测试的策略
+函数`f`，`g`，以及所谓lambda表达式`_.age`（替代`x => x.age`）虽然是纯函数，但`f`和`g`跟命令式编程语言没有任何区别，`_.age`能够被代替“函数”指针即可。每当我听演讲这样宣布函数式编程的好处，我不得不回想我日常写的代码，不得不想函数纯是纯，但我写的代码却是为了它的副作用！说到这里，为函数式编程到底为什么越来越火？
 
 # 避免不确定性
-我们写的代码最好避免不确定性：不确定性在用户看来。。。函数式语言雨来应用透明来避免不确定，命令式语言依赖严格顺利来避免不确定性。与命令式语言不同的是，引用透明式、函数式的语言避免另外一个不确定性的根源：（可变的）状态。
+我们写的代码最好避免不确定性：不确定性在用户看来充满bugs，不可靠的。函数式语言通过引用透明来避免不确定，命令式语言依赖严格顺利来避免不确定性。与命令式语言不同的是，引用透明式、函数式的语言避免另外一个不确定性的根源：（可变的）状态。二者编程方法最好完全管理各种输入，包括意外的输入、状态、运行时、部署的环境。那么，支持高阶函数和高阶类型的编程语言提供一个合适方式来表达意外的情况。
 
 ## 引用透明
 引用透明意味着把函数的调用代替该函数的内部代码后，程序的语义仍然一样。引用透明的最重要的结果是函数千万不能包括直接执行的副作用；换句话说，引用透明的程序只能使用纯函数；数学的意思的“纯函数”：函数的返回值只能够依赖该函数的参数。举例子，如果`def foo(): Int`函数是纯函数，他的返回值必定是一个常数。再考虑吧：`def foo(): Int`没有参数，随着纯函数的定义——纯函数的返回值只能够依赖参数——可见没有参数的函数无法返回非常数。下一个内涵，下一个特性就是能够把纯函数的返回值存贮在缓存里；更抽象地说，每一个纯函数能够被代替与一般`map`，与此同时，每一个`map`能够被代替与一个纯函数。纯函数只是把输入映射输出，千万不包括其他副作用。
@@ -150,16 +79,125 @@ object RT {
 
 引用透明主要结果让人清楚地了解程序的行为，因为引用透明的程序不仅仅没有内部、可变的状态，而且程序中的函数没有任何副作用。
 
-# 什么是副作用？
-大可惜的是唯一个原因来编写一个应用就是为了它的副作用。甚至连最聪明、最复杂的纯函数无法影响外面的世界，因为为了影响外面的世界，该函数需要执行一种副作用。经典的例子，经典的玩笑就是`def foo(): Int = { launchNuclearMissiles(); 42 }`，虽然从外面看`def foo(): Int`好像是纯的函数，实现却包括一个“副作用”，即`launchNuclearMissiles()`。
+# 意外输入、意外状态、意外外在的因素
+在我的经历上，我觉得最常遇到的问题来自于意外的输入，意外的状态、意外的外在因素；逻辑的后者算法的问题比前者罕见，而且逻辑或者算法问题比较容易地发现，容易地测试，调试。仔细地讲该问题以前，看下面的代码吧。
 
-那么，副作用主要点是什么？回想第一句话：我们的最终目的是避免不确定性，我们知道命令式代码依赖”一行一行”地进行的方法来表达该顺序。算法不是依靠确切运算的顺序吗？是的，回想最后一次你确实需要实现复杂算法
+{% highlight scala %}
+final case class DenseDataset(xs: Array[Double], ys: Array[Double]) {
+  assert(xs.length == ys.length)
+}
+opaque type ExperimentId = String
 
-与其
+def calculateYoungModulus(data: DenseDataset): Double 
+def loadData(experimentId: ExperimentId): DenseDataset
+{% endhighlight %}
 
+即使这两个函数缺乏实现，我们还本能地知道`loadData`函数，虽然比`calculateYoungModulus`一定更容易，但是一定更”危险“。为什么呢？虽然我们英译得清楚，可是在一般情况下，`loadData`会依靠其他系统（比如某些数据库、某些文件，总之外在、无法控制的数据输入），而且即使外在系统完全可靠，`loadData`还无法保证`experimentId`是存不存在。再加时间，特别是该时间内的系统后者数据结构体的更新。突然`loadData`不仅仅需要管理外在系统的所有问题，而且还需要管理数的据兼容或变换。这些挑战虽然不特别复杂，但源码行数越多问题也越多。不仅如此，`loadData`的类型把这些问题完全无视，看该函数的类型我们无法知道怎它会么办理意外情况。如果`experimentId`不存在，它返回`null`吗？如果`experimentId`是存在的，可是数据的格式无法转换，它还返回`null`吗？如果数据库链接被破坏了，它还是返回`null`的吗？更可能的是该函数会抛出异常，最好
 
-虽然一步一步地进行的方法难以分布化、平行化，但是全部地保证顺序
+{% highlight scala %}
+trait ExperimentRepository {
+  /**
+  * Loads experiment data for experiment identified by its ID
+  *
+  * @param experimentId the experiment identifier
+  * @return the fully-loaded experiment data set
+  * @throws ExperimentNotFoundException if the experiment does not exist
+  */
+  def find(experimentId: ExperimentId): DenseDataset = ???
+}
+{% endhighlight %}
 
-对比命令式和函数式
+行吧，虽然`loadData`的类型并不包括异常，我们可以通过ScalaDoc意识到`loadData`会跑出异常，即`ExperimentNotFoundException`。随着ScalaDoc，下面的代码应该完全地管理所有的意外情况。
+
+{% highlight scala %}
+/**
+ * Loads the experiment and performs the calculation
+ *
+ * @return the modulus
+ * @throws UnableToCalculateException if the young modulus cannot be calculated
+ */
+def main(): Double = {
+  val experimentId = ExperimentId("123")
+  try {
+    val data = loadData(experimentId)
+    calculateYoungModulus(data)
+  } catch {
+    case _: ExperimentNotFoundException => 
+      throw UnableToCalculateException(experimentId)
+  }
+}
+{% endhighlight %}
+
+上面的代码好像是随着一般Java的智慧，每一个层都需要管理下一层的异常，把它们变换到“更抽象”类型。让我们再看上面的代码吧：遇到了`UnableToCalculateException`把`main`调用者无法知道问题的来源，只知道结果是无法计算的。这样的代码必然地导致“哎呀，出事了”。什么事？能不能重试？对用户来说“出事了”的结果没用的：除了重试以外都不知道该怎么办，错误在哪里；对开发者或DevOps人员也没用的：除了重试都不知道错误的来源在哪里，无法去调试，无法调整。严重的是，这两个异常不是全部能遇到的异常，`find`一定使用其他库的，每一个库都有自己抛出的异常——我们没考虑的异常。再更严重的是，异常只是由ScalaDoc定义的[^1]！编写时编译器无法帮助我们发现哪里有危险，编译器所看见的是类型，`find`的类型是`ExperimentId -> DenseDataset`，好像纯函数！我们依靠我们的经历，经历是告诉我们`find`，这个词意味着某些输入/输出的行动，提醒我们要注意，要管理输入/输出的错误。假设我们把`find`重命令到`generate`我们可能不意识到函数的输入/输出性。
+
+> 旁注：目录  
+> 你们可能在想：目录框架能否解决管理异常的问题？与其担心`catch`、`throw`，不如只用类似于`log.error`吗？大部分的系统毕竟包括一个整体的异常函数，该函数只好返回`HTTP 500`和把异常的细节放在日录里。
+
+## 第一个方法：更确切的返回类型
+让我们再考虑`find`的类型，参数的类型`ExperimentId`已经合适的，只剩下考虑返回的类型。在`find`遇到错误的情况下，它应该返回属于“错误”的值；在一般情况下，它应该返回属于“成功”的值。换句话说，`find`返回值要么是错误，要么是成功；英语，也Scala的“要么A，要么B”便是`Either[A, B]`。如下面的源码所示，`Either[A, B]`能够表达两种情况：错误和成功。
+
+{% highlight scala %}
+/**
+ * Loads experiment data for experiment identified by its ID
+ *
+ * @param experimentId the experiment identifier
+ * @return the fully-loaded experiment data set
+ */
+def find(experimentId: ExperimentId): Either[Throwable, DenseDataset] = ???
+{% endhighlight %}
+
+通过调用`find`我们得到`Either[Throwable, DenseDataset]`值，接下来能把刚刚返回值调查，分别他的两个基本值：`Left`和`Right`。得到`Left`值意味着`find`出现问题了，`Left`中的`Throwable`子类是问题的原因/细节。`Right`意味着该函数成功了，`Right`中的值便是我们想获得`DenseDataset`。完美的，我们把项目中所有的函数类型变成`Either`即可吧，接下来我们可以把所有的函数连起来在一起来得到一个完美、巨大的函数。可惜的是，虽然我们把`find`叫做“函数”，但是它并不是数学的函数，并不是纯函数。纯函数最基础的规定之一是接收到一样的参数时，函数必须返回一样值。我们谈过的`f`，`g`函数满足这特性。调用`f(2)`总是会返回`4`。`ExperimentRepository.find`呢？它的返回值其实依赖外在的情况，即数据库中的数据！
+
+确实`ExperimentRepository.find`是一个副作用式的函数。副作用的经典例子，经典的玩笑就是`def foo(): Int = { launchNuclearMissiles(); 42 }`，虽然从外面看`def foo(): Int`好像是纯的函数，但它包括一个“副作用”，即`launchNuclearMissiles()`。总之，副作用意味着该函数并不是数学的函数，而是一般命令的序列。如果我们的编程语言无法表达副作用式函数和纯函数的区别，我们没办法把每一个函数有副作用看待。
+
+## 运行的环境，线程
+虽然`loadData`的返回类型能够表达错误和成功的情况，因为返回值是“一般”值，函数不得不同步地进行，无法非同步地执行。不过，
+
+{% highlight scala %}
+/**
+ * Loads experiment data for experiment identified by its ID
+ *
+ * @param experimentId the experiment identifier
+ * @return the fully-loaded experiment data set
+ */
+def find(experimentId: ExperimentId): Future[DenseDataset] = ???
+{% endhighlight %}
+
+这里`Future`所表达的是，`find`不仅仅会引起某些副作用，而且会需要一段时间才能返回。问题来了呢，这样来实现`ExperimentRepository.find`太具体了，而且因为`Future`需要一个`ExecutionContext`，`find`本身或`ExperimentRepository`需要管理/获得一个`ExecutionContext`。因为在一般情况下我们使用不一样的`ExecutionContext`，我们一般把`find`实现如下：
+
+{% highlight scala %}
+trait ExperimentRepository {
+  def find(experimentId: ExperimentId)
+          (given ec: ExecutionContext): Future[DenseDataset] = ???
+}
+
+class DefaultExperimentRepository(given ec: ExeuctionContext) 
+  extends ExperimentRepository {
+
+  def find(experimentId: ExperimentId): Future[DenseDataset] = ???
+}
+{% endhighlight %}
+
+这两个选择。。。
+
+{% highlight scala %}
+trait ExperimentRepository[F[_]] {
+  def find(experimentId: ExperimentId)
+          (given ec: ExecutionContext): F[DenseDataset] = ???
+}
+{% endhighlight %}
+
+{% highlight scala %}
+trait ItemRepository[F[_], G[_]] {
+  def find(experimentId: ExperimentId): F[DenseDataset]
+  def findAll(): F[G[DenseDataset]]
+}
+{% endhighlight %}
+
+* 更抽象概念，把具体高级类型`Future[A]`代替抽象高级类型`F[A]`
+* 实现高级类型的代数，使用typeclass来提供具体的进行环境
+* 配置线程池/进行的环境
+* 为什么不要用implicit参数，尤其implicit ExecutionContext
+* 测试性，测试的策略
 
 [^1]: Java是唯一个支持checked异常流行编程语言，checked异常意味着编译器将验查是否为所有的已检查异常提供了异常处理机制，而且每一个函数定义都必须包括所有可抛出的验查异常
