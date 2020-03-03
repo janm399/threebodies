@@ -12,7 +12,7 @@ hidden: true
 听函数式编程的演讲偶尔让我感觉有点不安：虽然我非常了解函数式编程的目的，非常了纯函数是吧输入映射输出，可是每一个演讲举的例子不要承认现实：事实上，我们写的代码只有很少的部分能够由纯函数来表达。你一定想得起来这些例子，如下面的代码所示。
 
 {% highlight Scala %}
-// 快入门的demo
+// 快入门指南中的每一个demo
 def f(x: Int): Int = x * 2
 def g(x: Int): Int = x + 3
 
@@ -31,7 +31,7 @@ people.maxBy(_.age)  // 返回的值 Person(?, ?)
 函数`f`，`g`，以及所谓lambda表达式`_.age`（替代`x => x.age`）虽然是纯函数，但`f`和`g`跟命令式编程语言没有任何区别，`_.age`能够被代替“函数”指针即可。每当我听演讲这样宣布函数式编程的好处，我不得不回想我日常写的代码，不得不想函数纯是纯，但我写的代码却是为了它的副作用！说到这里，为函数式编程到底为什么越来越火？
 
 # 避免不确定性
-我们写的代码最好避免不确定性：不确定性在用户看来充满bugs，不可靠的。函数式语言通过引用透明来避免不确定，命令式语言依赖严格顺利来避免不确定性。与命令式语言不同的是，引用透明式、函数式的语言避免另外一个不确定性的根源：（可变的）状态。二者编程方法最好完全管理各种输入，包括意外的输入、状态、运行时、部署的环境。那么，支持高阶函数和高阶类型的编程语言提供一个合适方式来表达意外的情况。
+我们写的代码最好避免不确定性：不确定性在用户看来充满bugs，不可靠的。函数式语言通过引用透明来避免不确定，命令式语言依赖严格顺利来避免不确定性。与命令式语言不同的是，引用透明式、函数式的语言避免另外一个不确定性的根源：（可变的）状态。二者编程方法最好完全管理各种输入，包括意外的输入、状态、运行时、部署的环境。那么，支持高阶的函数和高阶的类型的编程语言提供一个合适方式来表达意外的情况。
 
 ## 引用透明
 引用透明意味着把函数的调用代替该函数的内部代码后，程序的语义仍然一样。引用透明的最重要的结果是函数千万不能包括直接执行的副作用；换句话说，引用透明的程序只能使用纯函数；数学的意思的“纯函数”：函数的返回值只能够依赖该函数的参数。举例子，如果`def foo(): Int`函数是纯函数，他的返回值必定是一个常数。再考虑吧：`def foo(): Int`没有参数，随着纯函数的定义——纯函数的返回值只能够依赖参数——可见没有参数的函数无法返回非常数。下一个内涵，下一个特性就是能够把纯函数的返回值存贮在缓存里；更抽象地说，每一个纯函数能够被代替与一般`map`，与此同时，每一个`map`能够被代替与一个纯函数。纯函数只是把输入映射输出，千万不包括其他副作用。
@@ -133,7 +133,7 @@ def main(): Double = {
 > 旁注：目录  
 > 你们可能在想：目录框架能否解决管理异常的问题？与其担心`catch`、`throw`，不如只用类似于`log.error`吗？大部分的系统毕竟包括一个整体的异常函数，该函数只好返回`HTTP 500`和把异常的细节放在日录里。
 
-## 第一个方法：更确切的返回类型
+## 更确切的返回类型
 让我们再考虑`find`的类型，参数的类型`ExperimentId`已经合适的，只剩下考虑返回的类型。在`find`遇到错误的情况下，它应该返回属于“错误”的值；在一般情况下，它应该返回属于“成功”的值。换句话说，`find`返回值要么是错误，要么是成功；英语，也Scala的“要么A，要么B”便是`Either[A, B]`。如下面的源码所示，`Either[A, B]`能够表达两种情况：错误和成功。
 
 {% highlight scala %}
@@ -148,7 +148,7 @@ def find(experimentId: ExperimentId): Either[Throwable, DenseDataset] = ???
 
 通过调用`find`我们得到`Either[Throwable, DenseDataset]`值，接下来能把刚刚返回值调查，分别他的两个基本值：`Left`和`Right`。得到`Left`值意味着`find`出现问题了，`Left`中的`Throwable`子类是问题的原因/细节。`Right`意味着该函数成功了，`Right`中的值便是我们想获得`DenseDataset`。完美的，我们把项目中所有的函数类型变成`Either`即可吧，接下来我们可以把所有的函数连起来在一起来得到一个完美、巨大的函数。可惜的是，虽然我们把`find`叫做“函数”，但是它并不是数学的函数，并不是纯函数。纯函数最基础的规定之一是接收到一样的参数时，函数必须返回一样值。我们谈过的`f`，`g`函数满足这特性。调用`f(2)`总是会返回`4`。`ExperimentRepository.find`呢？它的返回值其实依赖外在的情况，即数据库中的数据！
 
-确实`ExperimentRepository.find`是一个副作用式的函数。副作用的经典例子，经典的玩笑就是`def foo(): Int = { launchNuclearMissiles(); 42 }`，虽然从外面看`def foo(): Int`好像是纯的函数，但它包括一个“副作用”，即`launchNuclearMissiles()`。总之，副作用意味着该函数并不是数学的函数，而是一般命令的序列。如果我们的编程语言无法表达副作用式函数和纯函数的区别，我们没办法把每一个函数有副作用看待。
+确实`ExperimentRepository.find`是一个副作用性的函数。副作用的经典例子，经典的玩笑就是`def foo(): Int = { launchNuclearMissiles(); 42 }`，虽然从外面看`def foo(): Int`好像是纯的函数，但它包括一个“副作用”，即`launchNuclearMissiles()`。总之，副作用意味着该函数并不是数学的函数，而是一般命令的序列。如果我们的编程语言无法表达副作用式函数和纯函数的区别，我们没办法把每一个函数有副作用看待。
 
 ## 运行的环境，线程
 虽然`loadData`的返回类型能够表达错误和成功的情况，因为返回值是“一般”值，函数不得不同步地进行，无法非同步地执行。不过，
@@ -163,11 +163,11 @@ def find(experimentId: ExperimentId): Either[Throwable, DenseDataset] = ???
 def find(experimentId: ExperimentId): Future[DenseDataset] = ???
 {% endhighlight %}
 
-这里`Future`所表达的是，`find`不仅仅会引起某些副作用，而且需要一段时间才能返回。问题来了呢，这样来实现`ExperimentRepository.find`太具体了。第一个太具体的原因来自于`Future`的本身执行方式。`Future`需要一个`ExecutionContext`。该`ExecutionContext`是一个线程池的接口，每一个`Future`对象属于一定`ExecutionContext`；更正确地说，创建一个`Future`对象时会调用`ExecutionContext`的接口为了得到一个线程，接下来把`Future`中的程序部署到刚刚得到的线程。随着我们的例子，要么`find`本身包括一个`ExecutionContext`类的参数，要么`ExperimentRepository`的（子类）中的所有函数使用一个共同`ExecutionContext`对象。哪一个选择更适合得看情况；广义地说，主要的是好好管理线程池的配置，好好管理线程的数量。引起输入或输出的行动（一般是仓库的次层和接口的次层）一般要采用“无限”的线程池，依靠处理器来执行算法一般要采用“确定”的线程池。因此，与其给`find`加上一个`ExecutionContext`类的参数，不如给`ExperimentRepository`的具体子类提供一个共同`ExecutionContext`，如下面代码所示。
+这里`Future`所表达的是，`find`不仅仅会引起某些副作用，而且需要一段时间才能返回。问题来了呢，这样来实现`ExperimentRepository.find`太具体了。第一个太具体的原因来自于`Future`的本身执行方式。`Future`需要一个`ExecutionContext`。该`ExecutionContext`是一个线程池的接口，每一个`Future`实例属于一定`ExecutionContext`；更正确地说，创建一个`Future`实例时会调用`ExecutionContext`的接口为了得到一个线程，接下来把`Future`中的程序部署到刚刚得到的线程。随着我们的例子，要么`find`本身包括一个`ExecutionContext`类的参数，要么`ExperimentRepository`的（子类）中的所有函数使用一个共同`ExecutionContext`实例。哪一个选择更适合得看情况；广义地说，主要的是好好管理线程池的配置，好好管理线程的数量。引起输入或输出的行动（一般是仓库的次层和接口的次层）一般要采用“无限”的线程池，依靠处理器来执行算法一般要采用“确定”的线程池。因此，与其给`find`加上一个`ExecutionContext`类的参数，不如给`ExperimentRepository`的具体子类提供一个共同`ExecutionContext`，如下面代码所示。
 
 {% highlight scala %}
 trait ExperimentRepository {
-  def find(experimentId: ExperimentId): Future[DenseDataset] = ???
+  def find(experimentId: ExperimentId): Future[DenseDataset]
 }
 
 class DefaultExperimentRepository(given ec: ExeuctionContext) 
@@ -179,16 +179,16 @@ class DefaultExperimentRepository(given ec: ExeuctionContext)
 
 这样来实现`DefaultExperimentRepository`的类型好像完全正确地表达各种可遇到的情况。查看`find`函数的类型可见它会引起某些副作用，而且可见它是在另外一个线程执行的。不幸运的是，`ExperimentRepository`接口，虽然应该是最抽象的，但是它定义实现的细节，即`find`一定是一个引起副作用，在另外一个线程执行的行动。假设有一个测试性的`ExperimentRepository`子类，在一般情况下，测试性版本需要提供可靠的、固定的输出，因此实现一般是“返回常数值”，这并不需要担心线程。
 
-## 高阶类型
-与其使用具体的`Future`类型，不如利用Scala的高阶类型系统，把`ExperimentRepository`重构到利用抽象的类型参数`F[_]`。（我们把该类型的参数叫做`F`，*functor*的缩短；为了好好了解具体的用法我们不需要担心functor的数学定义。为了了解更多，看看[Haskell 里面的 functor 是个什么概念](https://www.zhihu.com/question/26585629)吧。）
+## 高阶的类型
+与其使用具体的`Future`类型，不如利用Scala的高阶的类型系统，把`ExperimentRepository`重构到利用抽象的类型参数`F[_]`。（我们把该类型的参数叫做`F`，*functor*的缩短；为了好好了解具体的用法我们不需要担心functor的数学定义。为了了解更多，看看[Haskell 里面的 functor 是个什么概念](https://www.zhihu.com/question/26585629)[^2]吧。）
 
 {% highlight scala %}
 trait ExperimentRepository[F[_]] {
-  def find(experimentId: ExperimentId): F[DenseDataset] = ???
+  def find(experimentId: ExperimentId): F[DenseDataset]
 }
 {% endhighlight %}
 
-`ExperimentRepository`的类型参数让实现的子类确切地表达运行时的需求，与此同时`ExperimentRepository`接口类不定义实现的细节，只要实现的子类提供需要一个类型参数（也所谓类型的构造器）的具体高阶类型，就好了。结果，来重构本来的`DefaultExperimentRepository`得到下面的代码。
+`ExperimentRepository`的类型参数让实现的子类确切地表达运行时的需求，与此同时`ExperimentRepository`接口类不定义实现的细节，只要实现的子类提供需要一个类型参数（也所谓类型的构造器）的具体高阶的类型，就好了。结果，来重构本来的`DefaultExperimentRepository`得到下面的代码。
 
 {% highlight scala %}
 class DefaultExperimentRepository(given ec: ExecutionContext) 
@@ -197,7 +197,7 @@ class DefaultExperimentRepository(given ec: ExecutionContext)
 }
 {% endhighlight %}
 
-与此同时，抽象的类型参数让我们实现测试性的版本，测试性版本不需要担心`Future`，`ExecutionContext`，它能够直接返回`DenseDataset`值。可是我们还需要提供一个（一元的）类型构造器…… 我们知道一元的类型构造器包括`List`，`Option`，`Future`等等，可是我们所需要的是一种透明的容器。前者类型构造器意味着一定结构。我们要定义一个需要一个类型的参数的，“返回”该类型的高阶类型。换句话说，直接返回接到的类型的高阶类型：`type Id[A] = A`即可！
+与此同时，抽象的类型参数让我们实现测试性的版本，测试性版本不需要担心`Future`，`ExecutionContext`，它能够直接返回`DenseDataset`值。可是我们还需要提供一个（一元的）类型构造器…… 我们知道一元的类型构造器包括`List`，`Option`，`Future`等等，可是我们所需要的是一种透明的容器。前者类型构造器意味着一定结构。我们要定义一个需要一个类型的参数的，“返回”该类型的高阶的类型。换句话说，直接返回接到的类型的高阶的类型：`type Id[A] = A`即可！
 
 {% highlight scala %}
 type Id[A] = A
@@ -212,7 +212,7 @@ class TestExperimentRepository extends ExperimentRepository[Id] {
 
 {% highlight scala %}
 trait ExperimentRepository[F[_], G[_]] {
-  def find(experimentId: ExperimentId): F[DenseDataset] = ???
+  def find(experimentId: ExperimentId): F[DenseDataset]
   def findAll(): F[G[DenseDataset]]
 }
 {% endhighlight %}
@@ -225,18 +225,57 @@ trait Stream[A] { ... }
 class DefaultExperimentRepository(given ec: ExecutionContext) 
   extends ExperimentRepository[Future, Stream] {
   override def find(experimentId: ExperimentId): Future[DenseDataset] = ???
-  override def findAll(): Future[Stream[DenseDataset]]
+  override def findAll(): Future[Stream[DenseDataset]] = ???
 }
 {% endhighlight %}
 
-* 更抽象概念，把具体高级类型`Future[A]`代替抽象高级类型`F[A]`
-* 实现高级类型的代数，使用typeclass来提供具体的进行环境
-* 配置线程池/进行的环境
-* 为什么不要用implicit参数，尤其implicit ExecutionContext
-* 测试性，测试的策略
+说到这里，我们考虑下去吧，调用`DefaultExperimentRepository`构造时无法控制`ExperimentRepository`的类型参数，因此如果需要把`Future`或者`Stream`类型参数代替另外类型，唯一个办法是构建另外一个子类。我们把`ExperimentRepository`抽象化下去，与其具体`Future`和`Stream`类型参数，不如使用另外一个抽象的类型`F[_]`，假如把`ExperimentRepository`的子类实例化时编译器能够寻找或者派生所需的*typeclass*。*typeclass*确实是一般实例，唯一个差别在于编译器会——随着类型定义——自动地寻找或者派生适合typeclass实例[^3]。那么，更抽象`ExperimentRepository`的子类该包括什么能力？总之，它所需提供的是一个变换的方法，把任意值变换成`F[_]`实例。太抽象了，举个例子吧。
 
-[^1]: Java是唯一个支持checked异常流行编程语言，checked异常意味着编译器将验查是否为所有的已检查异常提供了异常处理机制，而且每一个函数定义都必须包括所有可抛出的验查异常
+{% highlight scala %}
+trait Ops[F[_]] {
+  def pure[A](value: => A): F[A]
+}
+
+// Scala 3.x的句法
+given futureOps(given ec: ExecutionContext) as Ops[Future] {
+  def pure[A](value: => A): Future[A] = Future { value }
+}
+
+// 或者依靠Scala 2.x的句法
+implicit class FutureOps(implicit ec: ExecutionContext) extends Ops[Future] {
+  ...
+}
+{% endhighlight %}
+
+编译器能够寻找或者派生`Ops[F[_]]`实例来提供`ExperimentRepository`的子类（被构造时）所需的行为。在一般情况下，我们不会从头来定义，实现typeclass，我们最好依靠某些类库提供的typeclass。比如，使用cats-effect[^4]我们会把上面的代码重构成下面的。
+
+{% highlight scala %}
+class DefaultExperimentRepository[F[_]](given F: Sync[F])
+    extends ExperimentRepository[F, List] {
+  def find(experimentId: ExperimentId): F[DenseDataset] =
+    F.pure(DenseDataset.empty)
+  def findAll(): F[List[DenseDataset]] = 
+    F.pure(List.fill(10000)(DenseDataset.empty))
+}
+{% endhighlight %}
+
+{% highlight scala %}
+class StreamingExperimentRepository[F[_]](given F: Sync[F])
+    extends ExperimentRepository[F, fs2.Stream[F, _]] {
+
+  def find(experimentId: ExperimentId): F[DenseDataset] = ???
+  def findAll(): F[fs2.Stream[F, DenseDataset]] = ???
+
+}
+{% endhighlight %}
+
+---
+TODO: 测试性，测试的策略
 
 ---
 
-[Haskell 里面的 functor 是个什么概念](https://www.zhihu.com/question/26585629)
+[^1]: Java是唯一个支持checked异常流行编程语言，checked异常意味着编译器将验查是否为所有的已检查异常提供了异常处理机制，而且每一个函数定义都必须包括所有可抛出的验查异常
+[^2]: [Haskell 里面的 functor 是个什么概念](https://www.zhihu.com/question/26585629)
+[^3]: [Shapeless入门指南（一）：自动派生 typeclass 实例](https://juejin.im/post/59bb60c1f265da06611f5a89)
+[^4]: [Cats Effect](https://typelevel.org/cats-effect/)
+
