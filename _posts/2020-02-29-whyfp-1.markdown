@@ -251,7 +251,8 @@ implicit class FutureOps(implicit ec: ExecutionContext) extends Ops[Future] {
 
 {% highlight scala %}
 class DefaultExperimentRepository[F[_]](given F: Sync[F])
-    extends ExperimentRepository[F, List] {
+  extends ExperimentRepository[F, List] {
+    
   def find(experimentId: ExperimentId): F[DenseDataset] =
     F.pure(DenseDataset.empty)
   def findAll(): F[List[DenseDataset]] = 
@@ -261,7 +262,7 @@ class DefaultExperimentRepository[F[_]](given F: Sync[F])
 
 {% highlight scala %}
 class StreamingExperimentRepository[F[_]](given F: Sync[F])
-    extends ExperimentRepository[F, fs2.Stream[F, _]] {
+  extends ExperimentRepository[F, ({type L[A] = fs2.Stream[F, A]})#L] {
 
   def find(experimentId: ExperimentId): F[DenseDataset] = ???
   def findAll(): F[fs2.Stream[F, DenseDataset]] = ???
