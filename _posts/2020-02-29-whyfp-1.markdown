@@ -34,7 +34,7 @@ people.maxBy(_.age)  // 返回的值 Person(?, ?)
 我们写的代码最好避免不确定性：不确定性在用户看来充满bugs，不可靠的。函数式语言通过引用透明来避免不确定，命令式语言依赖严格顺利来避免不确定性。与命令式语言不同的是，引用透明式、函数式的语言避免另外一个不确定性的根源：（可变的）状态。二者编程方法最好完全管理各种输入，包括意外的输入、状态、运行时、部署的环境。那么，支持高阶的函数和高阶的类型的编程语言提供一个合适方式来表达意外的情况。
 
 ## 引用透明
-引用透明意味着把函数的调用代替该函数的内部代码后，程序的语义仍然一样。引用透明的最重要的结果是函数千万不能包括直接执行的副作用；换句话说，引用透明的程序只能使用纯函数；数学的意思的“纯函数”：函数的返回值只能够依赖该函数的参数。举例子，如果`def foo(): Int`函数是纯函数，他的返回值必定是一个常数。再考虑吧：`def foo(): Int`没有参数，随着纯函数的定义——纯函数的返回值只能够依赖参数——可见没有参数的函数无法返回非常数。下一个内涵，下一个特性就是能够把纯函数的返回值存贮在缓存里；更抽象地说，每一个纯函数能够被代替与一般`map`，与此同时，每一个`map`能够被代替与一个纯函数。纯函数只是把输入映射输出，千万不包括其他副作用。
+引用透明意味着把函数的调用代替该函数的内部代码后，程序的语义仍然一样。引用透明的最重要的结果是函数千万不能包括直接执行的副作用；换句话说，引用透明的程序只能使用纯函数；数学的意思的“纯函数”：函数的返回值只能够依赖该函数的参数。举例子，如果`def foo(): Int`函数是纯函数，他的返回值必定是一个常数。再考虑吧：`def foo(): Int`没有参数，随着纯函数的定义——纯函数的返回值只能够依赖参数——可见没有参数的函数无法返回非常数。下一个内涵，下一个特性就是能够把纯函数的返回值存贮在缓存里；更抽象地说，每一个纯函数能够被代替一般`map`，与此同时，每一个`map`能够被代替与一个纯函数。纯函数只是把输入映射输出，千万不包括其他副作用。
 
 {% highlight scala %}
 enum Domain {
@@ -252,7 +252,7 @@ implicit class FutureOps(implicit ec: ExecutionContext) extends Ops[Future] {
 {% highlight scala %}
 class DefaultExperimentRepository[F[_]](given F: Sync[F])
   extends ExperimentRepository[F, List] {
-    
+
   def find(experimentId: ExperimentId): F[DenseDataset] =
     F.pure(DenseDataset.empty)
   def findAll(): F[List[DenseDataset]] = 
@@ -260,20 +260,8 @@ class DefaultExperimentRepository[F[_]](given F: Sync[F])
 }
 {% endhighlight %}
 
-{% highlight scala %}
-class StreamingExperimentRepository[F[_]](given F: Sync[F])
-  extends ExperimentRepository[F, ({type L[A] = fs2.Stream[F, A]})#L] {
-
-  def find(experimentId: ExperimentId): F[DenseDataset] = ???
-  def findAll(): F[fs2.Stream[F, DenseDataset]] = ???
-
-}
-{% endhighlight %}
-
----
-TODO: 测试性，测试的策略
-
----
+# 总结
+函数式编程语言虽然从理论上看来看似特别好用，虽然纯函数强度地引起开发者的注意，但依靠函数式语言的代码必须系统地管理副作用、非同步执行的模式、异常，否则配合多方式的编译方法导致模糊、臃肿的代码；不仅如此，多方式的代码消减团队的效率，增加bug的数量。
 
 [^1]: Java是唯一个支持checked异常流行编程语言，checked异常意味着编译器将验查是否为所有的已检查异常提供了异常处理机制，而且每一个函数定义都必须包括所有可抛出的验查异常
 [^2]: [Haskell 里面的 functor 是个什么概念](https://www.zhihu.com/question/26585629)
