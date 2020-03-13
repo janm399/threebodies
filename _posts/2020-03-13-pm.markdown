@@ -1,0 +1,69 @@
+---
+layout: post
+title:  "函数式到底好不好用？"
+date:   2020-03-13 15:00:00 +0000
+categories: [SW]
+excerpt: "case class"
+hidden: true
+---
+# Scala教程第一课：case class和模式匹配 （pattern matching）
+最简单模式匹配类似于Java的`instanceof`判断，如果`a instanceof X`判断是满意的，那意味着变量`a`便是一个属于`X`类型的实例。于是，我们能将它投影（cast）到`X`类型时不会遭遇`ClassCastException`异常。因此，常见的Java代码便是随着该逻辑。
+
+{% highlight Java %}
+class X {
+    private int a;
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof X) {
+            X that = (X)o;
+            return this.a == that.a;
+        } else return false;
+    }
+}
+{% endhighlight %}
+
+许多开发者觉得如上面的代码不简洁，虽然各种IDE会自动产生这样的代码，但是如果我们后来做一些修改，我们不得不要么再让IDE产生该`equals`，要么手动地修改。那么，利用Scala来实现一样的代码如何？
+
+{% highlight Scala %}
+class X {
+  private var a: Int
+
+  override def equals(o: AnyRef): Boolean = o match {
+    case that: X => that.a == this.a
+    case _       => false
+  }
+
+}
+{% endhighlight %}
+
+`match`关键词指着式匹配的词句，`match`里面有至少一个模式，每一个模式都由`case`开头，随着`case`有具体的模式词句。上面代码使用最基本的，跟`instanceof`一样的功能。关注不仅仅`case`的右边可以直接指左边定义的`that`变量，而且`that`的类型便是`X`。这里要提及另外一个JVM的编程语言：[Kotlin](https://kotlinlang.org/docs/reference/typecasts.html)[^1]。
+
+说到这里，这是最基本模式匹配的能力，接下来我们专心于Scala和Haskell来表示模式匹配最高阶的应用。
+
+## 简洁定义数据的结构体
+上面的`X`类型看似一种数据容器，该容器说不定是从REST接口解码的或从数据库读取的；无论如何，常用类似容器包含更多字段。那么，众所周知，应该用不可变的数据结构体，这不仅仅意味着所有的字段只有getters，而且所有的字段需要实例构造时被赋值。字段越多手动实现越麻烦；好在为了简化该常见的任务Scala提供`case class`的概念。基本上，`case class`是一般`class`，可是Scala编译器自我提供相关每一个字段的getter，以及自我实现`equals`、`hashCode`、`toString`。
+
+{% highlight Scala %}
+case class Container(name: String, age: Int)
+{% endhighlight %}
+
+实例
+
+## 高级模型匹配
+回想我们以前所定义的`Container`类，假设你想自己实现它的`equals`方法。
+
+{% highlight Scala %}
+case class Container(name: String, age: Int) {
+  override lazy val toString: String = s"Container(name=$name, age=$age)"
+  
+  override def equals(o: AnyRef): Boolean = o match {
+    case Container(`name`, a) if a > age => true
+    case _                               => false
+  }
+}
+{% endhighlight %}
+
+----
+
+[^1] [Kotlin](https://kotlinlang.org/docs/reference/typecasts.html)
