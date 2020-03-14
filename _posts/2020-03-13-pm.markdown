@@ -82,7 +82,7 @@ public class User {
 * 三十多行为了满足Java的句法、执行时的需求
 
 ## Scala方式
-为了解决这个问题，Scala提供一个特别容器，所谓`case class`。从编译器所产生的bytecode看来该`case class`跟前面定义的Java对象差不多，他也包含适应的构造器、getters、`equals`、`hashCode`、`toString`，与此同时保证不可变性。那么，所需的Scala代码到底有多长？
+为了解决这个问题，Scala提供一个特别的容器，所谓`case class`。从编译器所产生的bytecode看来该`case class`跟前面定义的Java对象差不多，它也包含适应的构造器、getters、`equals`、`hashCode`、`toString`，与此同时保证不可变性。那么，所需的Scala代码到底有多长？
 
 {% highlight Scala linenos %}
 case class User(id: Long, username: String) {
