@@ -7,6 +7,73 @@ excerpt: "case class"
 hidden: true
 ---
 # Scala教程第一课：case class和模式匹配 （pattern matching）
+本文章所讨论的是最常见的数据结构体，特别是在Java虚拟机，这就意味着我们会谈怎么最好，最方便地定义适应数据结构体的对象。那么，对象意味着JVM中的数据结构体并不是零代价抽象，除结构体中的所有字段之外，每一个对象都有自己的代价，这恐怕是JVM的基本设计。
+
+## 避免单调、重复的代码
+既然JVM没有零代价抽象，我们也不能放弃所有的可靠，可维持的代码规则。其中有最大影响是不可变性，不可变的，也就是说只读的，值在多线程的环境下能够安全地计算。最好从一个简单例子开始吧，下面的代码所示是Java做法来完全只读的结构体。
+
+{% highlight Java %}
+class User {
+    private Long id;
+    private String username;
+
+    User(Long id, String username) {
+        this.id = id;
+        this.username = username;
+    }
+
+    public Long getId() { return id; }
+    public String getUsername() { return username; }
+}
+{% endhighlight %}
+
+该`User`实例的确是不可变的，只读的值；一旦构造器执行完，它产生的值便无法被改变了。如果你负责将代码评价，你一定会发一些建议。
+
+* 构造器允许`User`中的字段`id`、`username`赋值于`null`
+* 该类型完全缺乏`hashCode`，`equals`
+* 虽然不必要的，但`User`还缺乏适应`toString`实现
+
+我们编写下去，终于得到下面的代码。
+
+{% highlight Java linenos %}
+class User {
+    private Long id;
+    private String username;
+
+    User(Long id, String username) {
+        if (id == null) throw new IllegalArgumentException("...");
+        if (username == null) throw new IllegalArgumentException("...");
+
+        this.id = id;
+        this.username = username;
+    }
+
+    public Long getId() { return id; }
+    public String getUsername() { return username; }
+
+    @Override 
+    public boolean equals(Object o) {
+        if (o instanceof User) {
+            User that = (User)o;
+            return this.id.equals(that.id) &&
+                   this.username.equals(that.username);
+        } else return false;
+    }
+
+    @Override 
+    public int hashCode() {
+        //
+    }
+
+    @Override 
+    public String toString() {
+        //
+    }
+}
+{% endhighlight %}
+
+我的天！为了正确地包起来两个字段必须编写三十多行源码，而且最讨厌的是大部分是完全单调的、重复的。不必说，许多IDE能够自我产生其源码，开发者却还需要将产生代码阅读，维修。
+
 最简单模式匹配类似于Java的`instanceof`判断，如果`a instanceof X`判断是满意的，那意味着变量`a`便是一个属于`X`类型的实例。于是，我们能将它投影（cast）到`X`类型时不会遭遇`ClassCastException`异常。因此，常见的Java代码便是随着该逻辑。
 
 {% highlight Java %}
@@ -56,7 +123,7 @@ case class Container(name: String, age: Int)
 {% highlight Scala %}
 case class Container(name: String, age: Int) {
   override lazy val toString: String = s"Container(name=$name, age=$age)"
-  
+
   override def equals(o: AnyRef): Boolean = o match {
     case Container(`name`, a) if a > age => true
     case _                               => false
