@@ -163,11 +163,11 @@ ju.Arrays.toString(hd1.image) == ju.Arrays.toString(hd2.image) // true！
 # 模式匹配
 Scala提供的模式匹配有三种：
 
-* 类型的匹配
-* 常数与判断的匹配
-* 变量赋值/结构的匹配
+* 类型匹配
+* 常数与判断匹配
+* 变量赋值/结构匹配
 
-## 类型的匹配
+## 类型匹配
 最简单模式匹配类似于Java的`instanceof`判断，如果`a instanceof X`判断是满意的，那意味着变量`a`便是一个属于`X`类型的实例。于是，我们能将它投影（cast）到`X`类型时不会遭遇`ClassCastException`异常。因此，常见的Java代码便是随着该逻辑。
 
 {% highlight Java %}
@@ -200,10 +200,59 @@ class X {
 
 `match`关键词指着式匹配的词句，`match`里面有至少一个模式，每一个模式都由`case`开头，随着`case`有具体的模式词句。上面代码使用最基本的，跟`instanceof`一样的功能。关注不仅仅`case`的右边可以直接指左边定义的`that`变量，而且`that`的类型便是`X`。这里要提及另外一个JVM的编程语言：[Kotlin](https://kotlinlang.org/docs/reference/typecasts.html)[^1]。
 
+----
+
+
+
+众所周知
+
 说到这里，这是最基本模式匹配的能力，接下来我们专心于Scala和Haskell来表示模式匹配最高阶的应用。
 
-## 常数与判断的匹配
-TODO
+## 变量赋值/结构匹配
+以前谈的`case class`结构跟变量赋值和结构匹配有紧密关系。可以说在某些情况下我们不管数据的容器如何，我们只想要将数据取出，赋值于变量。好在，Scala提供很自然的方法以不仅仅现结构匹配，而且将`case class`的字段取出，如下面代码所示。
+
+{% highlight Scala linenos %}
+val users = List(CC(1, "janmachacek"),
+                 CC(2, "anirvanchakraborty"),
+                 CC(3, "陈钦强"))
+val firstUsernameCharacter = users.map { x =>
+  x match {
+    case CC(_, username) => username(0)
+  }
+}
+{% endhighlight %}
+
+以将`x => x match { ... }`简洁一下，Scala的句法糖让我们删除`x => x match`，直接编写`case`关键词，简单化后得到下面的代码。
+
+{% highlight Scala linenos %}
+val firstUsernameCharacter = users.map { 
+  case CC(_, username) => username(0)
+}
+{% endhighlight %}
+
+虽然简洁，但最简洁方法便是避免全部模式匹配，把`map`的参数代替`_.username(0)`。为了演示地更清楚，先把`CC`类型复杂化一下。
+
+{% highlight Scala linenos %}
+// 使用Scala 2.x的句法
+sealed trait CC
+case object CC {
+  final case class Basic(id: Long, username: String) extends CC
+  final case class OAuth(token: String) extends CC
+  final case object Guest extends CC
+}
+
+// 使用Scala 3的句法
+enum CC {
+  case Basic(id: Long, username: String)
+  case OAuth(token: String)
+  case Guest
+}
+{% endhighlight %}
+
+不管你选哪一个Scala版本，基本的概念还是一摸一样。`CC`所定义的是所谓*sum type*，也就是说`CC`类型有三个可能的值，即`Basic`、`OAuth`、`Guest`。那么，它们分别有多少可能的值？再来算一算吧：`Guest`没有任何参数，所以只有一个可能的值，接下来`OAuth`有一个参数，即`token: String`。`String`有多少可能的值？确切数得看jvm heap的大小，这里举几个例子吧：`""`，`"a"`，`"aa"`, ……, `"a(*n)`，`ba(*n-1)`等，因此`OAuth`可能的值数等于它的参数的可能值数。`Basic`随着一样的模式：一共有`String` * `String`那么多可能的值数。
+
+## 常数与判断匹配
+随着类型匹配，常数匹配第二简单
 
 回想我们以前所定义的`CC`类，。。。
 
@@ -211,15 +260,13 @@ TODO
 case class CC(id: Long, username: String) {
 
   override def equals(o: AnyRef): Boolean = o match {
-    case Container(id, `username`) if id < 0L => true
-    case Container(`id`, `username`)          => true
-    case _                                    => false
+    case CC(id, `username`) if id < 0L => true
+    case CC(`id`, `username`)          => true
+    case _                             => false
   }
 }
 {% endhighlight %}
 
-## 变量赋值/结构的匹配
-TODO
 
 ----
 
