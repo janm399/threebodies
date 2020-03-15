@@ -1,12 +1,12 @@
 ---
 layout: post
-title:  "函数式到底好不好用？"
+title:  "Scala case class和模式匹配"
 date:   2020-03-13 15:00:00 +0000
 categories: [SW]
-excerpt: "case class"
+excerpt: "Scala case class和模式匹配"
 hidden: true
 ---
-# Scala教程第一课：case class和模式匹配 （pattern matching）
+# case class
 本文章所讨论的是最常见的数据结构体，特别是在Java虚拟机，这就意味着我们会谈怎么最好，最方便地定义适应数据结构体的对象。那么，对象意味着JVM中的数据结构体并不是零代价抽象，除结构体中的所有字段之外，每一个对象都有自己的代价，这恐怕是JVM的基本设计。
 
 ## 避免单调、重复的代码
@@ -89,11 +89,11 @@ case class User(id: Long, username: String) {
 }
 {% endhighlight %}
 
-千万不开玩笑：一共有三行。我们继续讨论`case class`以前，我们应该仔细地查看Scala编译器产生的bytecode，如下面图所示。
+千万不开玩笑：一共有三行。继续讨论`case class`以前，我们应该仔细地查看Scala编译器产生的bytecode，如下面图所示。
 
 ![](/assets/2020-03-16-pm/CC.class.bc.png)
 
-如可见，除了构造器和两个getters以外，Scala编译器也产生了比较多其他方法。这些方法提供Scala的某些句法糖；现在我们集中于跟Java代码相关的方法，如下面bytecode所示。
+如可见，除了构造器和两个getters以外，Scala编译器也产生了比较多其他方法。乍一看，`case class`的方便性的代价太高了，包括构造器一共有20个方法，下面的代码所示其中的最终好的。
 
 {% highlight Java %}
 CC.class:
@@ -112,7 +112,7 @@ int hashCode() { }
 java.lang.String toString() { }
 {% endhighlight %}
 
-随着bytecode分析，可见Scala定义的`case class`在一般Java源码能够直接地利用。
+其余的方法提供Scala的某些句法糖，可惜在Java无法顺利地使用。
 
 {% highlight Java %}
 var cc = new CC(1, "d");
@@ -121,7 +121,7 @@ cc.id();       // 返回1
 cc.username(); // 返回"d"
 {% endhighlight %}
 
-当然，我们一般不管如何在Java采用在Scala代码所定义的类型，如下面代码所示，Scala句法比Java更简洁，主要点包括：
+当然了，我们一般不管如何在Java采用Scala的类型，如下面代码所示，Scala句法比Java更简洁，主要点包括：
 
 * 行1，2：不要添加`new`关键词，要直接写`CC(...)`
 * 行3：不要随着Java getter的起名风俗，虽然我们写的`cc.id`看似直接接触私人的字段，但实际上`.id`将会调用适应getter方法
@@ -134,10 +134,40 @@ println(s"{cc1.id} -> ${cc1.username}")
 println(cc1 == cc2)
 {% endhighlight %}
 
-乍一看
+还剩下深入地探索已提出的所谓零代价抽象：看到了Scala编译器所产生的方法，难道句法糖再放便，程序执行时的影响都太大了？这个难题这里无法解决，下一个帖子会探索执行时影响。
+
+## case class的基本能力
+说到这里，很容易想`case class`唯一个好处在于简洁句法，也就是说源码行越少bugs也越少。虽然bugs的常见来源便是可变性，但不可变性实现确实不可变性的代码偶尔太复杂了，太冗长了。举经典的例子，假设我们需要更新一个字段，调用`case class`实例的`copy`方法即可，如下面源码所示。
+
+{% highlight Scala linenos %}
+val cc1 = CC(1, "a")
+val cc2 = cc1.copy(username = "b")
+{% endhighlight %}
+
+第一行定义不可变的变量`cc1`，第二行通过复制`cc1`中的所有字段所产生另外一个实例。请注意：我说的复制意味着将构造器调用于刚刚更新的字段值，也就是说构造器将会接收要么JVM所定义的*primitive*，要么实例指针。如果是*primitive*（比如`int`，`long`等），那么把它复制后会得到确实独立值，如果是实例，那么把它复制后会得到复制的指针，指针的目的基础实例不会被复制了。因此，**如果实例是可变的，那么虽然`case class`自身保证不可变性，虽然我们将`case class`实例值赋值于不可变的变量（`let`），但这并不意味着在任何可能的情况下得到正确不可变的实例**。下面的代码所示便是这个隐患。
+
+{% highlight Scala linenos %}
+case class HiddenDanger(id: Long, image: Array[Byte])
+
+val hd1 = HiddenDanger(1, Array(1, 2, 3, 4))
+val hd2 = hd1.copy()
+hd2.image.update(0, 65)
+
+ju.Arrays.toString(hd1.image) == ju.Arrays.toString(hd2.image) // true！
+{% endhighlight %}
+
+其难题恐怕是在Java虚拟机都无解的；总之，为了尽量保证不可变性，我们尽量必须避免可变的类型。以分别哪一个类型是可变的，最简简单的方法是看它所提供的方法：如果具有类似于setter，那么要注意，setter的存在可能意味着该类型的可变性。
 
 ----
 
+# 模式匹配
+Scala提供的模式匹配有三种：
+
+* 类型的匹配
+* 常数与判断的匹配
+* 变量赋值/结构的匹配
+
+## 类型的匹配
 最简单模式匹配类似于Java的`instanceof`判断，如果`a instanceof X`判断是满意的，那意味着变量`a`便是一个属于`X`类型的实例。于是，我们能将它投影（cast）到`X`类型时不会遭遇`ClassCastException`异常。因此，常见的Java代码便是随着该逻辑。
 
 {% highlight Java %}
@@ -172,29 +202,25 @@ class X {
 
 说到这里，这是最基本模式匹配的能力，接下来我们专心于Scala和Haskell来表示模式匹配最高阶的应用。
 
-## 简洁定义数据的结构体
-上面的`X`类型看似一种数据容器，该容器说不定是从REST接口解码的或从数据库读取的；无论如何，常用类似容器包含更多字段。那么，众所周知，应该用不可变的数据结构体，这不仅仅意味着所有的字段只有getters，而且所有的字段需要实例构造时被赋值。字段越多手动实现越麻烦；好在为了简化该常见的任务Scala提供`case class`的概念。基本上，`case class`是一般`class`，可是Scala编译器自我提供相关每一个字段的getter，以及自我实现`equals`、`hashCode`、`toString`。
+## 常数与判断的匹配
+TODO
+
+回想我们以前所定义的`CC`类，。。。
 
 {% highlight Scala %}
-case class Container(name: String, age: Int)
-{% endhighlight %}
-
-实例
-
-## 高级模型匹配
-回想我们以前所定义的`Container`类，假设你想自己实现它的`equals`方法。
-
-{% highlight Scala %}
-case class Container(name: String, age: Int) {
-  override lazy val toString: String = s"Container(name=$name, age=$age)"
+case class CC(id: Long, username: String) {
 
   override def equals(o: AnyRef): Boolean = o match {
-    case Container(`name`, a) if a > age => true
-    case _                               => false
+    case Container(id, `username`) if id < 0L => true
+    case Container(`id`, `username`)          => true
+    case _                                    => false
   }
 }
 {% endhighlight %}
 
+## 变量赋值/结构的匹配
+TODO
+
 ----
 
-[^1] [Kotlin](https://kotlinlang.org/docs/reference/typecasts.html)
+[^1]: [Kotlin](https://kotlinlang.org/docs/reference/typecasts.html)
