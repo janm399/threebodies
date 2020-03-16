@@ -144,7 +144,7 @@ val cc1 = CC(1, "a")
 val cc2 = cc1.copy(username = "b")
 {% endhighlight %}
 
-第一行定义不可变的变量`cc1`，第二行通过复制`cc1`中的所有字段所产生另外一个实例。请注意：我说的复制意味着将构造器调用于刚刚更新的字段值，也就是说构造器将会接收要么JVM所定义的*primitive*，要么实例指针。如果是*primitive*（比如`int`，`long`等），那么把它复制后会得到确实独立值，如果是实例，那么把它复制后会得到复制的指针，指针的目的基础实例不会被复制了。因此，**如果实例是可变的，那么虽然`case class`自身保证不可变性，虽然我们将`case class`实例值赋值于不可变的变量（`let`），但这并不意味着在任何可能的情况下得到正确不可变的实例**。下面的代码所示便是这个隐患。
+第一行定义不可变的变量`cc1`，第二行通过复制`cc1`中的所有字段所产生另外一个实例。请注意：我说的复制意味着将构造器调用于刚刚更新的字段值，也就是说构造器将会接收要么JVM所定义的*primitive*，要么实例指针。如果是*primitive*（比如`int`，`long`等），那么把它复制后会得到确实独立值，如果是实例，那么把它复制后会得到复制的指针，指针的目的基础实例不会被复制了。因此，**如果实例是可变的，那么虽然`case class`自身保证不可变性，虽然我们将`case class`实例值赋值于不可变的变量（`val`），但这并不意味着在任何可能的情况下得到正确不可变的实例**。下面的代码所示便是这个隐患。
 
 {% highlight Scala linenos %}
 case class HiddenDanger(id: Long, image: Array[Byte])
@@ -202,12 +202,6 @@ class X {
 
 ----
 
-
-
-众所周知
-
-说到这里，这是最基本模式匹配的能力，接下来我们专心于Scala和Haskell来表示模式匹配最高阶的应用。
-
 ## 变量赋值/结构匹配
 以前谈的`case class`结构跟变量赋值和结构匹配有紧密关系。可以说在某些情况下我们不管数据的容器如何，我们只想要将数据取出，赋值于变量。好在，Scala提供很自然的方法以不仅仅现结构匹配，而且将`case class`的字段取出，如下面代码所示。
 
@@ -236,20 +230,73 @@ val firstUsernameCharacter = users.map {
 // 使用Scala 2.x的句法
 sealed trait CC
 case object CC {
-  final case class Basic(id: Long, username: String) extends CC
-  final case class OAuth(token: String) extends CC
+  final case class Basic(id: Long, username: String) extends CC {
+    require(username != null)
+  }
+  final case class OAuth(token: String) extends CC {
+    require(token != null)
+  }
   final case object Guest extends CC
 }
 
 // 使用Scala 3的句法
 enum CC {
-  case Basic(id: Long, username: String)
-  case OAuth(token: String)
+  case Basic(id: Long, username: String) {
+    require(username != null)
+  }
+  case OAuth(token: String) {
+    require(token != null) 
+  }
   case Guest
 }
 {% endhighlight %}
 
-不管你选哪一个Scala版本，基本的概念还是一摸一样。`CC`所定义的是所谓*sum type*，也就是说`CC`类型有三个可能的值，即`Basic`、`OAuth`、`Guest`。那么，它们分别有多少可能的值？再来算一算吧：`Guest`没有任何参数，所以只有一个可能的值，接下来`OAuth`有一个参数，即`token: String`。`String`有多少可能的值？确切数得看jvm heap的大小，这里举几个例子吧：`""`，`"a"`，`"aa"`, ……, `"a(*n)`，`ba(*n-1)`等，因此`OAuth`可能的值数等于它的参数的可能值数。`Basic`随着一样的模式：一共有`String` * `String`那么多可能的值数。
+不管你选哪一个Scala版本，基本的概念还是一摸一样。我们所表达是用户的来源有三个可能。（这里不要多考虑现实的意思。）只要我们意识到用户的数据有三个可能，就好了。以便处理这三个可能，我们必须重构调用于`users.map`的函数。
+
+{% highlight Scala linenos %}
+val users = List(Basic(1, "janmachacek"),
+                 OAuth("...."),
+                 Guest)
+val firstUsernameCharacter = users.map { 
+  case CC.Basic(_, username) => username(0)
+  case CC.OAuth => 'o'
+  case CC.Guest => 'g'
+}
+{% endhighlight %}
+
+问题来了，为什么不要添加于`CC`一个类似于`getFirstUsernameCharacter`的（抽象）方法，接下来在每一个子类都提供适应的实现？以便做好决定，我们必须考虑向要添加的性能如下的问题：
+
+* 有没有外在数据的依赖
+* 现实的是否纯函数还是引起副作用的方法
+* 计划时无知的性能
+
+虽然这里没有任何固定的规则，但我建议只在第一个情况下将所需的方法实现于成员。因此，下面的代码表示所需的重构。
+
+{% highlight Scala linenos %}
+sealed trait CC {
+  def firstUsernameCharacter: Char
+}
+case object CC {
+  final case class Basic(id: Long, username: String) extends CC {
+    require(username != null)
+    override def firstUsernameCharacter: Char = username(0)
+  }
+  final case class OAuth(token: String) extends CC {
+    require(token != null)
+    override val firstUsernameCharacter: Char = 'o'
+  }
+  final case object Guest extends CC {
+    override val firstUsernameCharacter: Char = 'g'
+  }
+}
+{% endhighlight %}
+
+请注意，按照Scala句法中的《方法和成员的变量统一性》，可以使用`def`或者`val`来实现`firstUsernameCharacter`。说到这里，在什么情况下模式匹配不如避免抽象方法？
+
+* noop的实现
+* 副作用
+
+> *sum type*和*product type*：`CC`所定义的是所谓*sum type*，也就是说`CC`类型有三个可能的值，即`Basic`、`OAuth`、`Guest`。那么，它们分别有多少可能的值？让我们算一算吧：`Guest`没有任何参数，所以只有一个可能的值，接下来`OAuth`有一个参数，即`token: String`。`String`有多少可能的值？确切数得看jvm heap的大小，这里举几个例子吧：`""`，`"a"`，`"aa"`, ……, `"a(*n)`，`ba(*n-1)`等，因此`OAuth`可能的值数等于它的参数的可能值数。`Basic`随着一样的模式：一共有`String` * `String`那么多可能的值数。因此，我们将`case class`叫做*product type*，而将`sealed trait`的子类结构叫做*sum type*。
 
 ## 常数与判断匹配
 随着类型匹配，常数匹配第二简单
