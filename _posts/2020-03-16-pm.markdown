@@ -265,19 +265,55 @@ val firstUsernameCharacters = users.flatMap {
 }
 {% endhighlight %}
 
-说不定你还会反对，为什么不要将`getFirstUsernameCharacter`的返回类型重构到`Option[Char]`，接下来把它在`CC`的子类实现好？我觉得这是一点点编程哲学的问题，虽然`None`所表示的是缺席，但——至少在我看来——存在着一个返回`Option`的函数表明其返回值是合理的；换句话说，如果你不接收此想法，你应该觉得下面的代码也没问题的。
+说不定你还会反对，为什么不要将`getFirstUsernameCharacter`的返回类型重构到`Option[Char]`，接下来把它在`CC`的子类实现好？我觉得这是一点点编程哲学的问题，虽然`None`所表示的是缺席，但——至少在我看来——存在着一个返回`Option`的函数表明其返回值是合理的，这里为了将代码方便化我们非要定义不可实现的方法。
+
+### 序列模式匹配
+Scala为了序列模式匹配好像提供一个特别句法，拿一个`List[Int]`的变量，序列模式匹配句法是
 
 {% highlight Scala linenos %}
-sealed trait CC {
-  def 
-}
-case object CC {
-  final case class Basic(id: Long, username: String) extends CC
-  final case class OAuth(token: String) extends CC
-  final case object Guest extends CC
-}
+val users: List[CC] = List(...)
 
+users match {
+  case a :: b :: c :: Nil => 
+    // (1)
+  case Nil                => 
+    // (2)
+}
 {% endhighlight %}
+
+虽然上面的代码好像表示Scala包括某些特别序列模式匹配的支持，但是主要是针对于Scala标准库中的`::`和`Nil`的定义，如下面代码所示。
+
+{% highlight Scala linenos %}
+trait List[A] { ... }
+case class NonEmpty[A](head: A, tail: List[A]) extends List[A]
+case object Empty extends List[Nothing]
+{% endhighlight %}
+
+暂时，想象`NonEmpty`相当于`::`，`Empty`相当于标准库中的`Nil`。使用`NonEmpty`和`Empty`来重构前者例子产生下面的代码。
+
+{% highlight Scala linenos %}
+users match {
+  case NonEmpty(a, NonEmpty(b, NonEmpty(c, Empty))) =>
+    // (1)
+  case Empty                => 
+    // (2)
+}
+{% endhighlight %}
+
+这样一定能够理解清楚，`NonEmpty`和`Empty`二者类型是通常类型，通常`case class`；因此代码依靠通常模式匹配规则。将代码弯路地再重构，将`NonEmpty`和`Empty`再重构成`::`和`Nil`，我们获得下面的代码。
+
+{% highlight Scala linenos %}
+users match {
+  case ::(a, ::(b, ::(c, Nil))) =>
+    // (1)
+  case Empty                => 
+    // (2)
+}
+{% endhighlight %}
+
+你一定同意其代码没有任何神奇奥妙的意义，还是通常模式匹配。最后一步骤是应用Scala句法中《接收两个参数的函数能够使用于算子》，因此`::(a, ::(b, ::(c, Nil)))`相当于`a :: b :: c :: Nil`。没有任何神奇奥秘的意义，不依靠任何特别编译器支持。
+
+### _
 
 以便处理这三个可能，我们必须重构调用于`users.map`的函数。
 
