@@ -209,7 +209,7 @@ class X {
 val users = List(CC(1, "janmachacek"),
                  CC(2, "anirvanchakraborty"),
                  CC(3, "陈钦强"))
-val firstUsernameCharacter = users.map { x =>
+val firstUsernameCharacters = users.map { x =>
   x match {
     case CC(_, username) => username(0)
   }
@@ -219,58 +219,79 @@ val firstUsernameCharacter = users.map { x =>
 以将`x => x match { ... }`简洁一下，Scala的句法糖让我们删除`x => x match`，直接编写`case`关键词，简单化后得到下面的代码。
 
 {% highlight Scala linenos %}
-val firstUsernameCharacter = users.map { 
+val firstUsernameCharacters = users.map { 
   case CC(_, username) => username(0)
 }
 {% endhighlight %}
 
-虽然简洁，但最简洁方法便是避免全部模式匹配，把`map`的参数代替`_.username(0)`。为了演示地更清楚，先把`CC`类型复杂化一下。
+虽然简洁，但最简洁方法便是避免全部模式匹配，把`map`的参数代替`_.username(0)`。下面的代码表示重构的结果。
+
+{% highlight Scala linenos %}
+final case class CC(id: Long, username: String) {
+  override def firstUsernameCharacter: Char = username(0)
+}
+
+val firstUsernameCharacters = users.map(_.firstUsernameCharacter)
+{% endhighlight %}
+
+上面的代码所示比模式匹配更简洁，而且能够增加代码的重复利用性，大量地减少bug的可能性。所以，模式匹配到底有没有好用的地方？为了演示地更清楚，先把`CC`类型复杂化一下。
 
 {% highlight Scala linenos %}
 // 使用Scala 2.x的句法
 sealed trait CC
 case object CC {
-  final case class Basic(id: Long, username: String) extends CC {
-    require(username != null)
-  }
-  final case class OAuth(token: String) extends CC {
-    require(token != null)
-  }
+  final case class Basic(id: Long, username: String) extends CC
+  final case class OAuth(token: String) extends CC
   final case object Guest extends CC
 }
 
 // 使用Scala 3的句法
 enum CC {
-  case Basic(id: Long, username: String) {
-    require(username != null)
-  }
-  case OAuth(token: String) {
-    require(token != null) 
-  }
+  case Basic(id: Long, username: String)
+  case OAuth(token: String)
   case Guest
 }
 {% endhighlight %}
 
-不管你选哪一个Scala版本，基本的概念还是一摸一样。我们所表达是用户的来源有三个可能。（这里不要多考虑现实的意思。）只要我们意识到用户的数据有三个可能，就好了。以便处理这三个可能，我们必须重构调用于`users.map`的函数。
+不管你选哪一个Scala版本，基本的概念还是一摸一样。我们所表达是用户的来源有三个可能。（这里不要多考虑现实的意思。）只要我们意识到用户的数据有三个可能即可。现在呢，只有`CC.Basic`类型能够返回用户名的第一个字母，其他可能或子类（即`CC.OAuth`，`CC.Guest`）无法包括“用户名的第一个字母”的概念。一个方法是犯罪hack，决定虽然只有`CC.Basic`能够提供“用户名的第一个字母”的概念，但其余子类能够返回一种默认值，比如使`CC.OAuth`中的`getFirstUsernameCharacter`返回`o`，使`CC.Guest`返回`g`。我希望你们也觉得这个绝对不行。
 
 {% highlight Scala linenos %}
-val users = List(Basic(1, "janmachacek"),
-                 OAuth("...."),
-                 Guest)
-val firstUsernameCharacter = users.map { 
-  case CC.Basic(_, username) => username(0)
-  case CC.OAuth => 'o'
-  case CC.Guest => 'g'
+val users = List(CC.Basic(1, "janmachacek"),
+                 CC.OAuth("...."),
+                 CC.Guest)
+val firstUsernameCharacters = users.flatMap { 
+  case CC.Basic(_, username) => Some(username(0))
+  case _                     => None
 }
 {% endhighlight %}
 
+说不定你还会反对，为什么不要将`getFirstUsernameCharacter`的返回类型重构到`Option[Char]`，接下来把它在`CC`的子类实现好？我觉得这是一点点编程哲学的问题，虽然`None`所表示的是缺席，但——至少在我看来——存在着一个返回`Option`的函数表明其返回值是合理的；换句话说，如果你不接收此想法，你应该觉得下面的代码也没问题的。
+
+{% highlight Scala linenos %}
+sealed trait CC {
+  def 
+}
+case object CC {
+  final case class Basic(id: Long, username: String) extends CC
+  final case class OAuth(token: String) extends CC
+  final case object Guest extends CC
+}
+
+{% endhighlight %}
+
+以便处理这三个可能，我们必须重构调用于`users.map`的函数。
+
+
 问题来了，为什么不要添加于`CC`一个类似于`getFirstUsernameCharacter`的（抽象）方法，接下来在每一个子类都提供适应的实现？以便做好决定，我们必须考虑向要添加的性能如下的问题：
 
-* 有没有外在数据的依赖
+* 有没有外在数据的依赖，每一个子类都能够提供适应的实现
 * 现实的是否纯函数还是引起副作用的方法
 * 计划时无知的性能
 
-虽然这里没有任何固定的规则，但我建议只在第一个情况下将所需的方法实现于成员。因此，下面的代码表示所需的重构。
+虽然这里没有任何固定的规则，但我建议只在第一个情况下将所需的方法实现于成员。让我们由具体例子来更仔细地看。
+
+### 没有额外的依赖，每一个子类都能够实现其抽象方法
+因此，下面的代码表示所需的重构。
 
 {% highlight Scala linenos %}
 sealed trait CC {
@@ -291,7 +312,14 @@ case object CC {
 }
 {% endhighlight %}
 
-请注意，按照Scala句法中的《方法和成员的变量统一性》，可以使用`def`或者`val`来实现`firstUsernameCharacter`。说到这里，在什么情况下模式匹配不如避免抽象方法？
+请注意，按照Scala句法中的《方法和成员的变量统一性》，可以使用`def`或者`val`来实现`firstUsernameCharacter`。说到这里，在什么情况下模式匹配不如避免抽象方法？总之，要么在于某些子类中的实现是无做的，要么实现是引起副作用的。
+
+### 无做的实现
+无做的现实是对象式代码的大罪，由具体例子来表示吧。
+
+{% highlight Scala linenos %}
+
+{% endhighlight %}
 
 * noop的实现
 * 副作用
