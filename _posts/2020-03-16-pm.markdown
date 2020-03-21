@@ -6,7 +6,7 @@ categories: [SW]
 excerpt: "Scala case class和模式匹配"
 hidden: true
 ---
-# case class
+# 一、case class
 本文章所讨论的是最常见的数据结构体，特别是在Java虚拟机，这就意味着我们会谈怎么最好，最方便地定义适应数据结构体的对象。那么，对象意味着JVM中的数据结构体并不是零代价抽象，除结构体中的所有字段之外，每一个对象都有自己的代价，这恐怕是JVM的基本设计。
 
 ## 避免单调、重复的代码
@@ -158,9 +158,11 @@ ju.Arrays.toString(hd1.image) == ju.Arrays.toString(hd2.image) // true！
 
 其难题恐怕是在Java虚拟机都无解的；总之，为了尽量保证不可变性，我们尽量必须避免可变的类型。以分别哪一个类型是可变的，最简简单的方法是看它所提供的方法：如果具有类似于setter，那么要注意，setter的存在可能意味着该类型的可变性。
 
+> *sum type*和*product type*：`CC`所定义的是所谓*sum type*，也就是说`CC`类型有三个可能的值，即`Basic`、`OAuth`、`Guest`。那么，它们分别有多少可能的值？让我们算一算吧：`Guest`没有任何参数，所以只有一个可能的值，接下来`OAuth`有一个参数，即`token: String`。`String`有多少可能的值？确切数得看jvm heap的大小，这里举几个例子吧：`""`，`"a"`，`"aa"`, ……, `"a(*n)`，`ba(*n-1)`等，因此`OAuth`可能的值数等于它的参数的可能值数。`Basic`随着一样的模式：一共有`String` * `String`那么多可能的值数。因此，我们将`case class`叫做*product type*，而将`sealed trait`的子类结构叫做*sum type*。
+
 ----
 
-# 模式匹配
+# 二、模式匹配
 Scala提供的模式匹配有三种：
 
 * 类型匹配
@@ -191,8 +193,8 @@ class X {
   private var a: Int
 
   override def equals(o: AnyRef): Boolean = o match {
-    case that: X => that.a == this.a
-    case _       => false
+    case that: X       => that.a == this.a
+    case somethingElse => false
   }
 
 }
@@ -200,7 +202,19 @@ class X {
 
 `match`关键词指着式匹配的词句，`match`里面有至少一个模式，每一个模式都由`case`开头，随着`case`有具体的模式词句。上面代码使用最基本的，跟`instanceof`一样的功能。关注不仅仅`case`的右边可以直接指左边定义的`that`变量，而且`that`的类型便是`X`。这里要提及另外一个JVM的编程语言：[Kotlin](https://kotlinlang.org/docs/reference/typecasts.html)[^1]。
 
-----
+## 常数与判断匹配
+随着类型匹配，常数匹配第二简单模式匹配方法。回想我们以前所定义的`CC`类，。。。
+
+{% highlight Scala %}
+case class CC(id: Long, username: String) {
+
+  override def equals(o: AnyRef): Boolean = o match {
+    case CC(id, `username`) if id < 0L => true
+    case CC(`id`, `username`)          => true
+    case _                             => false
+  }
+}
+{% endhighlight %}
 
 ## 变量赋值/结构匹配
 以前谈的`case class`结构跟变量赋值和结构匹配有紧密关系。可以说在某些情况下我们不管数据的容器如何，我们只想要将数据取出，赋值于变量。好在，Scala提供很自然的方法以不仅仅现结构匹配，而且将`case class`的字段取出，如下面代码所示。
@@ -211,7 +225,7 @@ val users = List(CC(1, "janmachacek"),
                  CC(3, "陈钦强"))
 val firstUsernameCharacters = users.map { x =>
   x match {
-    case CC(_, username) => username(0)
+    case CC(id, username) => username(0)
   }
 }
 {% endhighlight %}
@@ -220,7 +234,7 @@ val firstUsernameCharacters = users.map { x =>
 
 {% highlight Scala linenos %}
 val firstUsernameCharacters = users.map { 
-  case CC(_, username) => username(0)
+  case CC(id, username) => username(0)
 }
 {% endhighlight %}
 
@@ -260,15 +274,39 @@ val users = List(CC.Basic(1, "janmachacek"),
                  CC.OAuth("...."),
                  CC.Guest)
 val firstUsernameCharacters = users.flatMap { 
-  case CC.Basic(_, username) => Some(username(0))
-  case _                     => None
+  case CC.Basic(id, username) => Some(username(0))
+  case somethingElse          => None
 }
 {% endhighlight %}
 
-说不定你还会反对，为什么不要将`getFirstUsernameCharacter`的返回类型重构到`Option[Char]`，接下来把它在`CC`的子类实现好？我觉得这是一点点编程哲学的问题，虽然`None`所表示的是缺席，但——至少在我看来——存在着一个返回`Option`的函数表明其返回值是合理的，这里为了将代码方便化我们非要定义不可实现的方法。
+说不定你还会反对，为什么不要将`getFirstUsernameCharacter`的返回类型重构到`Option[Char]`，接下来把它在`CC`的子类实现好？我觉得这是一点点编程哲学的问题，虽然`None`所表示的是缺席，但——至少在我看来——存在着一个返回`Option`的函数表明其返回值是合理的，这里为了将代码方便化我们非要定义不可实现的方法。总之，以便做好决定是否利用抽象函数，我们必须考虑向要添加的性能如下的问题：
+
+* 有没有外在数据的依赖
+* 每一个子类都能够提供适应的实现
+* 不返回默认值的或者使用无做的实现
+* 不引起副作用
+
+如果该`sealed trait`满意所有上面的条件，那么可考虑使用抽象方法，不然使用模式匹配。当然了，如果你的代码常常（通过模式匹配）将该`case class`映射另外一个值，那么为了提高重复利用性，我建议将该函数放在`case class`的`companion object`，接下来把它调用于类似于`map`的函数。
+
+{% highlight Scala linenos %}
+sealed trait CC
+object CC {
+  final case class Basic(id: Long, username: String) extends CC
+  final case class OAuth(token: String) extends CC
+  final case object Guest extends CC
+
+  def getFirstUsernameCharacter(cc: CC): Option[Char] = {
+    case Basic(id, username) => Some(username(0))
+    case somethingElse       => None
+  }
+}
+
+val users: List[CC] = ...
+val firstUsernameCharacters = users.map(CC.getFirstUsernameCharacter)
+{% endhighlight %}
 
 ### 序列模式匹配
-Scala为了序列模式匹配好像提供一个特别句法，拿一个`List[Int]`的变量，序列模式匹配句法是
+Scala为了序列模式匹配好像提供一个特别句法，拿一个`List[A]`的变量，序列模式匹配句法是
 
 {% highlight Scala linenos %}
 val users: List[CC] = List(...)
@@ -276,7 +314,7 @@ val users: List[CC] = List(...)
 users match {
   case a :: b :: c :: Nil => 
     // (1)
-  case Nil                => 
+  case somethingElse      => 
     // (2)
 }
 {% endhighlight %}
@@ -289,24 +327,24 @@ case class NonEmpty[A](head: A, tail: List[A]) extends List[A]
 case object Empty extends List[Nothing]
 {% endhighlight %}
 
-暂时，想象`NonEmpty`相当于`::`，`Empty`相当于标准库中的`Nil`。使用`NonEmpty`和`Empty`来重构前者例子产生下面的代码。
+暂时，想象`NonEmpty`相当于`::`，`Empty`相当于标准库中的`Nil`。使用`NonEmpty`和`Empty`来重构前者例子所产生下面的代码。
 
 {% highlight Scala linenos %}
 users match {
   case NonEmpty(a, NonEmpty(b, NonEmpty(c, Empty))) =>
     // (1)
-  case Empty                => 
+  case somethingElse                                =>
     // (2)
 }
 {% endhighlight %}
 
-这样一定能够理解清楚，`NonEmpty`和`Empty`二者类型是通常类型，通常`case class`；因此代码依靠通常模式匹配规则。将代码弯路地再重构，将`NonEmpty`和`Empty`再重构成`::`和`Nil`，我们获得下面的代码。
+这样一定能够理解清楚，`NonEmpty`和`Empty`二者类型是通常类型，普通`case class`；因此代码依靠通常模式匹配的规则。将代码弯路地再重构，将`NonEmpty`和`Empty`再重构成`::`和`Nil`，我们获得下面的代码。
 
 {% highlight Scala linenos %}
 users match {
   case ::(a, ::(b, ::(c, Nil))) =>
     // (1)
-  case Empty                => 
+  case somethingElse            => 
     // (2)
 }
 {% endhighlight %}
@@ -315,68 +353,6 @@ users match {
 
 ### _
 
-以便处理这三个可能，我们必须重构调用于`users.map`的函数。
-
-
-问题来了，为什么不要添加于`CC`一个类似于`getFirstUsernameCharacter`的（抽象）方法，接下来在每一个子类都提供适应的实现？以便做好决定，我们必须考虑向要添加的性能如下的问题：
-
-* 有没有外在数据的依赖，每一个子类都能够提供适应的实现
-* 现实的是否纯函数还是引起副作用的方法
-* 计划时无知的性能
-
-虽然这里没有任何固定的规则，但我建议只在第一个情况下将所需的方法实现于成员。让我们由具体例子来更仔细地看。
-
-### 没有额外的依赖，每一个子类都能够实现其抽象方法
-因此，下面的代码表示所需的重构。
-
-{% highlight Scala linenos %}
-sealed trait CC {
-  def firstUsernameCharacter: Char
-}
-case object CC {
-  final case class Basic(id: Long, username: String) extends CC {
-    require(username != null)
-    override def firstUsernameCharacter: Char = username(0)
-  }
-  final case class OAuth(token: String) extends CC {
-    require(token != null)
-    override val firstUsernameCharacter: Char = 'o'
-  }
-  final case object Guest extends CC {
-    override val firstUsernameCharacter: Char = 'g'
-  }
-}
-{% endhighlight %}
-
-请注意，按照Scala句法中的《方法和成员的变量统一性》，可以使用`def`或者`val`来实现`firstUsernameCharacter`。说到这里，在什么情况下模式匹配不如避免抽象方法？总之，要么在于某些子类中的实现是无做的，要么实现是引起副作用的。
-
-### 无做的实现
-无做的现实是对象式代码的大罪，由具体例子来表示吧。
-
-{% highlight Scala linenos %}
-
-{% endhighlight %}
-
-* noop的实现
-* 副作用
-
-> *sum type*和*product type*：`CC`所定义的是所谓*sum type*，也就是说`CC`类型有三个可能的值，即`Basic`、`OAuth`、`Guest`。那么，它们分别有多少可能的值？让我们算一算吧：`Guest`没有任何参数，所以只有一个可能的值，接下来`OAuth`有一个参数，即`token: String`。`String`有多少可能的值？确切数得看jvm heap的大小，这里举几个例子吧：`""`，`"a"`，`"aa"`, ……, `"a(*n)`，`ba(*n-1)`等，因此`OAuth`可能的值数等于它的参数的可能值数。`Basic`随着一样的模式：一共有`String` * `String`那么多可能的值数。因此，我们将`case class`叫做*product type*，而将`sealed trait`的子类结构叫做*sum type*。
-
-## 常数与判断匹配
-随着类型匹配，常数匹配第二简单
-
-回想我们以前所定义的`CC`类，。。。
-
-{% highlight Scala %}
-case class CC(id: Long, username: String) {
-
-  override def equals(o: AnyRef): Boolean = o match {
-    case CC(id, `username`) if id < 0L => true
-    case CC(`id`, `username`)          => true
-    case _                             => false
-  }
-}
-{% endhighlight %}
 
 
 ----
