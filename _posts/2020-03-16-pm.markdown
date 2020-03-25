@@ -203,7 +203,99 @@ class X {
 `match`关键词指着式匹配的词句，`match`里面有至少一个模式，每一个模式都由`case`开头，随着`case`有具体的模式词句。上面代码使用最基本的，跟`instanceof`一样的功能。关注不仅仅`case`的右边可以直接指左边定义的`that`变量，而且`that`的类型便是`X`。这里要提及另外一个JVM的编程语言：[Kotlin](https://kotlinlang.org/docs/reference/typecasts.html)[^1]。
 
 ## 常数与判断匹配
-随着类型匹配，常数匹配第二简单模式匹配方法。回想我们以前所定义的`CC`类，。。。
+随着类型匹配，常数匹配第二简单模式匹配方法。最简单的版本就像Java中的`switch`差不多，差别在于Scala模式匹配支持所有的常数，所有的类型。最基本的`match`跟Java中的`switch`一样，截止（2020年3月）Scala编译器不产生提升的`switch`。让我们对比JDK 14编译器和Scala编译器所产生的字节码。
+
+{% highlight Java linenos %}
+final var s = "Foo";
+switch (s) {
+    case "foo", "bar" -> System.out.println("foo or bar");
+    default -> System.out.println("Something else");
+}
+
+final var i = 1;
+switch (i) {
+    case 1, 2 -> System.out.println("One or two");
+    default -> System.out.println("Something else");
+}
+{% endhighlight %}
+
+为了获得大概的了解，我们不要一行一行地探索Java字节码，由伪代码来探索即可。
+
+<table>
+<tr>
+<td> Java </td> <td> Scala </td>
+</tr>
+<tr class="highlight">
+<td class="highlight">
+{% highlight Java %}
+LOOKUPSWITCH (INVOKEVIRTUAL s.hashCode())
+  97299:   GOTO maybefoo // "foo".hashCode()
+  101574:  GOTO maybebar // "bar".hashCode()
+  default: GOTO somethingelse1
+maybefoo:
+  IF (INVOKEVIRTUAL(s.equals("foo")))
+       GOTO reallyfooorbar
+  GOTO somethingelse1
+maybebar:
+  IF (INVOKEVIRTUAL(s.equals("bar")))
+       GOTO reallyfooorbar
+  GOTO somethingelse1
+reallyfooorbar:
+  System.out.println("foo or bar")
+  GOTO rest1
+somethingelse1:
+  System.out.println("Something else")
+rest1:
+LOOKUPSWITCH (i)
+  1:  GOTO reallyoneortwo
+  2:  GOTO reallyoneortwo
+  default: GOTO somethingelse2
+reallyoneortwo:
+  System.out.println("One or two")
+  GOTO rest2
+somethingelse2:
+  System.out.println("Something else")
+rest2:
+  ...
+{% endhighlight %}
+</td>
+<td class="highlight">
+{% highlight Java %}
+IF (INVOKEVIRTUAL(s.equals("foo"))) 
+    GOTO reallyfooorbar
+IF (INVOKEVIRTUAL(s.equals("bar")))
+    GOTO reallyfooorbar
+
+
+
+
+
+
+
+
+reallyfooorbar:
+  System.out.println("foo or bar")
+  GOTO rest1:
+
+System.out.println("Something else")
+rest1:
+LOOKUPSWITCH (i)
+  1:  GOTO reallyoneortwo
+  2:  GOTO reallyoneortwo
+  default: GOTO somethingelse2
+reallyoneortwo:
+  System.out.println("One or two")
+  GOTO rest2
+somethingelse2:
+  System.out.println("Something else")
+rest2:
+  ...
+{% endhighlight %}
+</td>
+</tr>
+</table>
+
+乍一看Scala字节码看似更简单，但是`INVOKEVIRTUAL`虚拟机的指令的内部逻辑很复杂，Java 14的“尽量避免调用`INVOKEVIRTUAL`的方式所产生的字节码虽然更长，但是执行得更快。说到这里呢，我们一般不担心低级字节码，不过我觉得了解虚拟机的作法还比较重要。
 
 {% highlight Scala %}
 case class CC(id: Long, username: String) {
