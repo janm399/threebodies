@@ -1,12 +1,11 @@
 ---
 layout: post
-title:  "Scala case class和模式匹配"
-date:   2020-03-13 15:00:00 +0000
+title:  "Scala 案例类和模式匹配：一"
+date:   2020-03-26 11:00:00 +0000
 categories: [SW]
-excerpt: "Scala case class和模式匹配"
-hidden: true
+excerpt: "Scala 案例类和模式匹配二者概念常见在一起。案例类的基础用法很简单、很简洁，它却能够表达特别复杂的概念；特别是利用模式匹配。"
 ---
-# 一、case class
+# 一、案例类（case class）
 本文章所讨论的是最常见的数据结构体，特别是在Java虚拟机，这就意味着我们会谈怎么最好，最方便地定义适应数据结构体的对象。那么，对象意味着JVM中的数据结构体并不是零代价抽象，除结构体中的所有字段之外，每一个对象都有自己的代价，这恐怕是JVM的基本设计。
 
 ## 避免单调、重复的代码
@@ -81,7 +80,7 @@ public class User {
 * 三十多行为了满足Java的句法、执行时的需求
 
 ## Scala方式
-为了解决这个问题，Scala提供一个特别的容器，所谓`case class`。从编译器所产生的bytecode看来该`case class`跟前面定义的Java对象差不多，它也包含适应的构造器、getters、`equals`、`hashCode`、`toString`，与此同时保证不可变性。那么，所需的Scala代码到底有多长？
+为了解决这个问题，Scala提供一个特别的容器，所谓案例类。从编译器所产生的bytecode看来该跟前面定义的Java对象差不多，它也包含适应的构造器、getters、`equals`、`hashCode`、`toString`，与此同时保证不可变性。那么，所需的Scala代码到底有多长？
 
 {% highlight Scala linenos %}
 case class User(id: Long, username: String) {
@@ -89,11 +88,11 @@ case class User(id: Long, username: String) {
 }
 {% endhighlight %}
 
-千万不开玩笑：一共有三行。继续讨论`case class`以前，我们应该仔细地查看Scala编译器产生的bytecode，如下面图所示。
+千万不开玩笑：一共有三行。继续讨论案例类以前，我们应该仔细地查看Scala编译器产生的bytecode，如下面图所示。
 
 ![](/assets/2020-03-16-pm/CC.class.bc.png)
 
-如可见，除了构造器和两个getters以外，Scala编译器也产生了比较多其他方法。乍一看，`case class`的方便性的代价太高了，包括构造器一共有20个方法，下面的代码所示其中的最终好的。
+如可见，除了构造器和两个getters以外，Scala编译器也产生了比较多其他方法。乍一看，案例类的方便性的代价太高了，包括构造器一共有20个方法，下面的代码所示其中的最终好的。
 
 {% highlight Java %}
 CC.class:
@@ -136,15 +135,15 @@ println(cc1 == cc2)
 
 还剩下深入地探索已提出的所谓零代价抽象：看到了Scala编译器所产生的方法，难道句法糖再放便，程序执行时的影响都太大了？这个难题这里无法解决，下一个帖子会探索执行时影响。
 
-## case class的基本能力
-说到这里，很容易想`case class`唯一个好处在于简洁句法，也就是说源码行越少bugs也越少。虽然bugs的常见来源便是可变性，但不可变性实现确实不可变性的代码偶尔太复杂了，太冗长了。举经典的例子，假设我们需要更新一个字段，调用`case class`实例的`copy`方法即可，如下面源码所示。
+## 案例类的基本能力
+说到这里，很容易想案例类唯一个好处在于简洁句法，也就是说源码行越少bugs也越少。虽然bugs的常见来源便是可变性，但不可变性实现确实不可变性的代码偶尔太复杂了，太冗长了。举经典的例子，假设我们需要更新一个字段，调用案例类实例的`copy`方法即可，如下面源码所示。
 
 {% highlight Scala linenos %}
 val cc1 = CC(1, "a")
 val cc2 = cc1.copy(username = "b")
 {% endhighlight %}
 
-第一行定义不可变的变量`cc1`，第二行通过复制`cc1`中的所有字段所产生另外一个实例。请注意：我说的复制意味着将构造器调用于刚刚更新的字段值，也就是说构造器将会接收要么JVM所定义的*primitive*，要么实例指针。如果是*primitive*（比如`int`，`long`等），那么把它复制后会得到确实独立值，如果是实例，那么把它复制后会得到复制的指针，指针的目的基础实例不会被复制了。因此，**如果实例是可变的，那么虽然`case class`自身保证不可变性，虽然我们将`case class`实例值赋值于不可变的变量（`val`），但这并不意味着在任何可能的情况下得到正确不可变的实例**。下面的代码所示便是这个隐患。
+第一行定义不可变的变量`cc1`，第二行通过复制`cc1`中的所有字段所产生另外一个实例。请注意：我说的复制意味着将构造器调用于刚刚更新的字段值，也就是说构造器将会接收要么JVM所定义的*primitive*，要么实例指针。如果是*primitive*（比如`int`，`long`等），那么把它复制后会得到确实独立值，如果是实例，那么把它复制后会得到复制的指针，指针的目的基础实例不会被复制了。因此，**如果实例是可变的，那么虽然案例类自身保证不可变性，虽然我们将案例类实例值赋值于不可变的变量（`val`），但这并不意味着在任何可能的情况下得到正确不可变的实例**。下面的代码所示便是这个隐患。
 
 {% highlight Scala linenos %}
 case class HiddenDanger(id: Long, image: Array[Byte])
@@ -158,7 +157,7 @@ ju.Arrays.toString(hd1.image) == ju.Arrays.toString(hd2.image) // true！
 
 其难题恐怕是在Java虚拟机都无解的；总之，为了尽量保证不可变性，我们尽量必须避免可变的类型。以分别哪一个类型是可变的，最简简单的方法是看它所提供的方法：如果具有类似于setter，那么要注意，setter的存在可能意味着该类型的可变性。
 
-> *sum type*和*product type*：`CC`所定义的是所谓*sum type*，也就是说`CC`类型有三个可能的值，即`Basic`、`OAuth`、`Guest`。那么，它们分别有多少可能的值？让我们算一算吧：`Guest`没有任何参数，所以只有一个可能的值，接下来`OAuth`有一个参数，即`token: String`。`String`有多少可能的值？确切数得看jvm heap的大小，这里举几个例子吧：`""`，`"a"`，`"aa"`, ……, `"a(*n)`，`ba(*n-1)`等，因此`OAuth`可能的值数等于它的参数的可能值数。`Basic`随着一样的模式：一共有`String` * `String`那么多可能的值数。因此，我们将`case class`叫做*product type*，而将`sealed trait`的子类结构叫做*sum type*。
+> *sum type*和*product type*：`CC`所定义的是所谓*sum type*，也就是说`CC`类型有三个可能的值，即`Basic`、`OAuth`、`Guest`。那么，它们分别有多少可能的值？让我们算一算吧：`Guest`没有任何参数，所以只有一个可能的值，接下来`OAuth`有一个参数，即`token: String`。`String`有多少可能的值？确切数得看jvm heap的大小，这里举几个例子吧：`""`，`"a"`，`"aa"`, ……, `"a(*n)`，`ba(*n-1)`等，因此`OAuth`可能的值数等于它的参数的可能值数。`Basic`随着一样的模式：一共有`String` * `String`那么多可能的值数。因此，我们将案例类叫做*product type*，而将`sealed trait`的子类结构叫做*sum type*。
 
 ----
 
@@ -313,7 +312,7 @@ case class CC(id: Long, username: String) {
 上面的代码中的第四行和第五行的作用完全一样，请注意`\``用法。
 
 ## 变量赋值/结构匹配
-以前谈的`case class`结构跟变量赋值和结构匹配有紧密关系。可以说在某些情况下我们不管数据的容器如何，我们只想要将数据取出，赋值于变量。好在，Scala提供很自然的方法以不仅仅现结构匹配，而且将`case class`的字段取出，如下面代码所示。
+以前谈的案例类结构跟变量赋值和结构匹配有紧密关系。可以说在某些情况下我们不管数据的容器如何，我们只想要将数据取出，赋值于变量。好在，Scala提供很自然的方法以不仅仅现结构匹配，而且将案例类的字段取出，如下面代码所示。
 
 {% highlight Scala linenos %}
 val users = List(CC(1, "janmachacek"),
@@ -348,7 +347,7 @@ val firstUsernameCharacters = users.map(_.firstUsernameCharacter)
 
 {% highlight Scala linenos %}
 // 使用Scala 2.x的句法
-sealed trait CC
+trait CC
 case object CC {
   final case class Basic(id: Long, username: String) extends CC
   final case class OAuth(token: String) extends CC
@@ -382,7 +381,7 @@ val firstUsernameCharacters = users.flatMap {
 * 不返回默认值的或者使用无做的实现
 * 不引起副作用
 
-如果该`sealed trait`满意所有上面的条件，那么可考虑使用抽象方法，不然使用模式匹配。当然了，如果你的代码常常（通过模式匹配）将该`case class`映射另外一个值，那么为了提高重复利用性，我建议将该函数放在`case class`的`companion object`，接下来把它调用于类似于`map`的函数。
+如果该`sealed trait`满意所有上面的条件，那么可考虑使用抽象方法，不然使用模式匹配。当然了，如果你的代码常常（通过模式匹配）将该案例类映射另外一个值，那么为了提高重复利用性，我建议将该函数放在案例类的`companion object`，接下来把它调用于类似于`map`的函数。
 
 {% highlight Scala linenos %}
 sealed trait CC
@@ -434,7 +433,7 @@ users match {
 }
 {% endhighlight %}
 
-这样一定能够理解清楚，`NonEmpty`和`Empty`二者类型是通常类型，普通`case class`；因此代码依靠通常模式匹配的规则。将代码弯路地再重构，将`NonEmpty`和`Empty`再重构成`::`和`Nil`，我们获得下面的代码。
+这样一定能够理解清楚，`NonEmpty`和`Empty`二者类型是通常类型，普通案例类；因此代码依靠通常模式匹配的规则。将代码弯路地再重构，将`NonEmpty`和`Empty`再重构成`::`和`Nil`，我们获得下面的代码。
 
 {% highlight Scala linenos %}
 users match {
@@ -448,8 +447,10 @@ users match {
 你一定同意其代码没有任何神奇奥妙的意义，还是通常模式匹配。最后一步骤是应用Scala句法中《接收两个参数的函数能够使用于算子》，因此`::(a, ::(b, ::(c, Nil)))`相当于`a :: b :: c :: Nil`。没有任何神奇奥秘的意义，不依靠任何特别编译器支持。
 
 ### _
+你可能意识到上面的代码常常使用类似于“其他的”的变量，即`x`、`other`、`somethingElse`，定义，获得值后再不用。定义再不用的变量不如使用`_`，`_`所表示的是该模式位置只要是存在的，不管他的值如何。
 
-
+# 总结
+本帖子给你介绍案例类（`case class`）和初级模式匹配的句法和用法。接下来，我们必须考虑高级用法，特别是探索代数的类，仔细地看依靠案例类的副作用库。
 
 ----
 
