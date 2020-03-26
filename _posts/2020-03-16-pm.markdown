@@ -295,18 +295,22 @@ rest2:
 </tr>
 </table>
 
-乍一看Scala字节码看似更简单，但是`INVOKEVIRTUAL`虚拟机的指令的内部逻辑很复杂，Java 14的“尽量避免调用`INVOKEVIRTUAL`的方式所产生的字节码虽然更长，但是执行得更快。说到这里呢，我们一般不担心低级字节码，不过我觉得了解虚拟机的作法还比较重要。
+乍一看Scala字节码看似更简单，但是`INVOKEVIRTUAL`虚拟机的指令的内部逻辑很复杂，Java 14的“尽量避免调用`INVOKEVIRTUAL`的方式所产生的字节码虽然更长，但是执行得更快。说到这里呢，我们一般不担心低级字节码，不过我觉得了解虚拟机的作法还比较重要。由此可见`switch`和`match`的基本原则都是或多或少有效率地产生调用类似于`equals`的字节码，而`match`由`instanceof`判断所提升`switch`的功能。
 
-{% highlight Scala %}
+只剩下仔细地看两个比较少见的`match`句法，即判断条件和以从变量获得的值为模式匹配的常数。下面的例子所示好二者概念。
+
+{% highlight Scala linenos %}
 case class CC(id: Long, username: String) {
 
   override def equals(o: AnyRef): Boolean = o match {
-    case CC(id, `username`) if id < 0L => true
-    case CC(`id`, `username`)          => true
-    case _                             => false
+    case CC(oi, ou) if oi == id && ou == username => true
+    case CC(`id`, `username`)                     => true
+    case _                                        => false
   }
 }
 {% endhighlight %}
+
+上面的代码中的第四行和第五行的作用完全一样，请注意`\``用法。
 
 ## 变量赋值/结构匹配
 以前谈的`case class`结构跟变量赋值和结构匹配有紧密关系。可以说在某些情况下我们不管数据的容器如何，我们只想要将数据取出，赋值于变量。好在，Scala提供很自然的方法以不仅仅现结构匹配，而且将`case class`的字段取出，如下面代码所示。
