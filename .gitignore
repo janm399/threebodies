@@ -1,4 +1,6 @@
 _site
+.metals
+.vscode
 .sass-cache
 .jekyll-cache
 .jekyll-metadata
