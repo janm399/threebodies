@@ -4,7 +4,7 @@ title:  "Scala入门培训：第一文章"
 date:   2020-11-03 11:00:00 +0000
 categories: [Scala]
 excerpt: "。。。"
-hidden: false
+hidden: true
 ---
 
 一开始教Scala课程，我问了问实习者是否他们觉得要从最基本概念开始学习。我把最基础概念定义为
