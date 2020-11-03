@@ -126,15 +126,64 @@ val range = intWrapper(1).until(10)
 换句话说“WTF man，我只要学习怎么用`for`。“
 
 ### 类、案例类、元组
+普遍`class`不应该那么复杂，Scala `class`跟Java `class`很像——更简洁Java会有多难呢？*动物*类和它的两个字累*猫*和*狗*有些古典美，也很容易理解。
+
+{% highlight Scala linenos %}
+abstract class Animal {
+  def live(): Unit = println("我还活着")
+}
+class Dog extends Animal {
+  def bark(): Unit = ...
+}
+class Cat extends Animal {
+  def miaow(): Unit = ...
+}
+
+val c: Cat = new Cat
+val a: Animal = c
+a.live()    // OK
+a.miaow()   // 编译时的错误：Animal类不包含miaow()方法
+c.miaow()   // OK
+{% endhighlight %}
+
+最重要对象式编译的规定（继承、抽象类、抽象方法）大家都很熟悉，但我发现了有些规定还有点模糊，比如`class`跟`trait`的继承，抽象类跟`trait`的差别，更不要说它们的用法。不管如此，这个古典例子与CS的课程常见CS课程很般配。下一个话题是最好数据“容器”是什么？这里我提出了其他编程语言的类似于`struct`的结构，总之我们想表达的结构是普遍数据容器，该容器应该是最方便、最简洁表达办法。考虑这两个要求，Java式`class`并不适合。为了证明这一点，我所写的是Java式`class`，如下面清单所示。
+
+{% highlight Scala linenos %}
+class Dog(name: String, age: Int) {
+  def getName: String = name
+  def getAge: Int     = age
+}
+{% endhighlight %}
+
+上面的清单也很容易理解的，大家都很喜欢Scala所介绍的简洁句法。方法定义，虽然一开始大家都觉得有点奇怪（好像全部翻过来的：把类型定义要放在标识符的后面，没有参数的方法不需要加圆括号，在方法体只有一个表达式下，不需要加大括号），但除此之外没有任何不理解的代码。我以为大家都已经遇到Java式数据容器所带来的麻烦，即缺乏正常的`equals`和`hashCode`、也缺乏方便`toString`。原来大家都没遇到下面清单所示的问题。
+
+{% highlight Scala linenos %}
+val a1 = new Dog("猎犬", 8)
+val a2 = new Dog("猎犬", 8)
+val b1 = new Dog("乖乖", 1)
+
+b1 == a1    // 正常，false
+a1 == a1    // 正常，true
+a1 == a2    // 不正常，false
+
+a1.toString() // 不正常，"...Dog@715f45c6"
+{% endhighlight %}
+
+好像大家都没意识到普遍Java式的类不仅仅不包括`equals`、`hashCode`、`equals`，而且没意识到这三个方法的重要性。手动的实现也太麻烦了，再加大部分的开发工具提供自动生产的功能，结果“有没有办法让编译器自动地把它们生产？”是很自然的问题。
 
 # 总结
-总体来看，
+总体来看，从最容易理解的句法、用法到最难理解的是：
 
-### 基本的句法
-比普通编程语言Scala用的句法偶尔有点奇异，但还没有Go、Haskell、F#那么奇异。本能都是把类型放在变量、函数定义的前面，而不放在后面。
+- 🙂 变量、函数、没有类型参数的类（`trait`、`class`）、方法的定义
+- 🙂 条件、基础数据类（`Int`、`String`等等）
+- 😐 `object`和`(case) class`、`trait`的差别
+- 😐 基础、非泛类的案例类、不可变的重要性、`copy`方法
+- 😐 模式匹配
+- 🙁 泛型类、包括标准库中`List`、`Option`；标准库的常用方法`map`、`flatMap`、`filter`
+- ☹️ 有着两个（以上）类型参数的泛型类、比如标准库中`Either`
+- 😬 `for`，包括`for`跟`map`、`flatMap`、`filter`的关系
+- 🤬 Pimp my library、implicits
 
-* 一切都是表达式：
-* 新概念：新数据的结构
-* 
+
 
 [^1]: [Pimp my library](https://www.artima.com/weblogs/viewpost.jsp?thread=179766)
