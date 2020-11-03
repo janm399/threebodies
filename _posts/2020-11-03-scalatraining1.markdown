@@ -162,14 +162,28 @@ val a1 = new Dog("猎犬", 8)
 val a2 = new Dog("猎犬", 8)
 val b1 = new Dog("乖乖", 1)
 
-b1 == a1    // 正常，false
-a1 == a1    // 正常，true
-a1 == a2    // 不正常，false
+b1 == a1      // 正常，false
+a1 == a1      // 正常，true
+a1 == a2      // 不正常，false
 
 a1.toString() // 不正常，"...Dog@715f45c6"
 {% endhighlight %}
 
-好像大家都没意识到普遍Java式的类不仅仅不包括`equals`、`hashCode`、`equals`，而且没意识到这三个方法的重要性。手动的实现也太麻烦了，再加大部分的开发工具提供自动生产的功能，结果“有没有办法让编译器自动地把它们生产？”是很自然的问题。
+好像大家都没意识到普遍Java式的类不仅仅不包括`equals`、`hashCode`、`toString`，而且没意识到这三个方法的重要性。手动的实现也太麻烦了，再加大部分的开发工具提供自动生产的功能，结果“有没有办法让编译器自动地把它们生产？”是很自然的问题。恰好Scala有`case class`。
+
+{% highlight Scala linenos %}
+case class Dog(name: String, age: Int)
+
+val a1 = Dog("猎犬", 8)
+val a2 = Dog("猎犬", 8)
+val b1 = Dog("乖乖", 1)
+
+b1 == a1      // 正常，false
+a1 == a1      // 正常，true
+a1 == a2      // 正常，true
+
+a1.toString() // 正常，"Dog(猎犬,8)"
+{% endhighlight %}
 
 # 总结
 总体来看，从最容易理解的句法、用法到最难理解的是：
