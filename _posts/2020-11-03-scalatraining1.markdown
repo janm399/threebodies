@@ -123,8 +123,18 @@ val range = intWrapper(1).until(10)
 
 ![](http://abstrusegoose.com/strips/computer_science_major.png)
 
-改述说“WTF man，我只要学习怎么用`for`。“
+换句话说“WTF man，我只要学习怎么用`for`。“
 
 ### 类、案例类、元组
+
+# 总结
+总体来看，
+
+### 基本的句法
+比普通编程语言Scala用的句法偶尔有点奇异，但还没有Go、Haskell、F#那么奇异。本能都是把类型放在变量、函数定义的前面，而不放在后面。
+
+* 一切都是表达式：
+* 新概念：新数据的结构
+* 
 
 [^1]: [Pimp my library](https://www.artima.com/weblogs/viewpost.jsp?thread=179766)
