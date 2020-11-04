@@ -162,6 +162,9 @@ val a1 = new Dog("猎犬", 8)
 val a2 = new Dog("猎犬", 8)
 val b1 = new Dog("乖乖", 1)
 
+a1.getName    // 正常，"猎犬"
+a1.getAge     // 正常，8
+
 b1 == a1      // 正常，false
 a1 == a1      // 正常，true
 a1 == a2      // 不正常，false
@@ -178,12 +181,17 @@ val a1 = Dog("猎犬", 8)
 val a2 = Dog("猎犬", 8)
 val b1 = Dog("乖乖", 1)
 
+a1.name       // 正常，"猎犬"
+a1.age        // 正常，8
+
 b1 == a1      // 正常，false
 a1 == a1      // 正常，true
 a1 == a2      // 正常，true
 
 a1.toString() // 正常，"Dog(猎犬,8)"
 {% endhighlight %}
+
+getter从get*X*被重命名到*X*没有任何不了解的，而大家都觉得`case class`很方便
 
 # 总结
 总体来看，从最容易理解的句法、用法到最难理解的是：
