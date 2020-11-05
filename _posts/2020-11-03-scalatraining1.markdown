@@ -191,7 +191,7 @@ a1 == a2      // 正常，true
 a1.toString() // 正常，"Dog(猎犬,8)"
 {% endhighlight %}
 
-getter从get*X*被重命名到*X*没有任何不了解的，而大家都觉得`case class`很方便
+`X`代替`getX`没有任何不了解的，而大家都觉得`case class`很方便，终于可以专心于数据的意义，不要迷路于句法的细节。那么`case`关键词让大家都想起来Java中`switch (...) case`的结构。自从JDK 7以来，Java支持`String`类
 
 # 总结
 总体来看，从最容易理解的句法、用法到最难理解的是：
@@ -200,10 +200,8 @@ getter从get*X*被重命名到*X*没有任何不了解的，而大家都觉得`c
 - 🙂 条件、基础数据类（`Int`、`String`等等）
 - 😐 `object`和`(case) class`、`trait`的差别
 - 😐 基础、非泛类的案例类、不可变的重要性、`copy`方法
-- 😐 模式匹配
-- 🙁 泛型类、包括标准库中`List`、`Option`；标准库的常用方法`map`、`flatMap`、`filter`
-- ☹️ 有着两个（以上）类型参数的泛型类、比如标准库中`Either`
-- 😬 `for`，包括`for`跟`map`、`flatMap`、`filter`的关系
+- 🙁 模式匹配
+- 😬 `for`循环
 - 🤬 Pimp my library、implicits
 
 
