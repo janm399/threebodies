@@ -3,8 +3,7 @@ layout: post
 title:  "Scala入门培训：基础"
 date:   2020-11-01 11:00:00 +0000
 categories: [Scala]
-excerpt: "。。。"
-hidden: true
+excerpt: "Scala基础到底设什么？最好学习办法是什么，并且最令人头疼是什么？本帖子所探讨的是第一个月的Scala教程、最令从来没碰到Scala的同学吃惊，而提出一些教程中的错误"
 ---
 
 一开始教Scala课程，我问了问实习者是否他们觉得要从最基本概念开始学习。我把最基础概念定义为
