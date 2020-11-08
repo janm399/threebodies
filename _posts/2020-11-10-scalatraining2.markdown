@@ -48,15 +48,18 @@ for (Integer n : numbers) {
 // flatMapped等于"ArrayList { 1， 10, 2， 20, 3， 30, 4， 40, 5， 50 }"
 {% endhighlight %}
 
-上面的代码是很容易了解的，而且是大学CS教程中很常见的代码。每一个命令都很明显地表示它的目的，很明显地表示它的输入、输出；虽然有点啰嗦，但是容易了解，而且十分正常。对吧？呵呵，得看情况，更具体地说，`numbers`是哪一种数组，上面的代码是在单线或者在多线程序用的，
+上面的代码是很容易了解的，而且是大学CS教程中很常见的代码。每一个命令都很明显地表示它的目的，很明显地表示它的输入、输出；虽然有点啰嗦，但是容易了解。就算我们把多线环境的问题解决好，可变性的问题也还在。这个可变性的问题在于在考虑代码当中，我们不仅仅必须考虑逻辑，而且还需要考虑时间。
 
-值得指出的是每一个`List<Integer>`的变量可以是`final`。大家都知道定义为`final`代表着变量的值是不可变的，那么不可变的变量怎么能调用类似于`add`的函数呢？Java，更正确地说JVM，把`final`定义为“指针”是不可变的，而指针所指的实例不是因为`final`而受到任何限制的。
+<!--
+且十分正常。对吧？呵呵，得看情况，更具体地说，在多线情况下上面的代码会出race condition。该race condition会被`numbers`数组同时变、读取引起的。那么，Java包括一个比较有意思的关键词，即`final`。大家都知道定义为`final`代表着变量的值是不可变的，那么不可变的变量怎么能调用类似于`add`的函数呢？其实，在Java，更正确地说JVM，把`final`定义为“指针”是不可变的，而指针所指的实例不是因为`final`而受到任何限制的。
 
 {% highlight Java linenos %}
 final List<Integer> numbers    = Arrays.asList(1, 2, 3, 4, 5);
 final List<Integer> filtered   = new ArrayList<>();
 final List<Integer> mapped     = new ArrayList<>();
 final List<Integer> flatMapped = new ArrayList<>();
+
+// 虽然定义为final，还能调用`add`方法
 {% endhighlight %}
 
 这里要对比一下C++所带来的`const`。C++的`const`确实是代表着常数、不可变的值。
@@ -66,11 +69,12 @@ const std::vector<int> numbers = { 1, 2, 3, 4, 5 };
 numbers.push_back(6);   // 编译时报错：*const* std::vector<int> 不包含着push_back函数
 {% endhighlight %}
 
-为什么要谈谈`final`、不可变的变量呢？因为可以把`final`直接翻译到Scala的`val`。我强烈推荐大家都尽量使用`val`；通过`val`可以写更容易了解的代码，一旦我们为某一个定义为`val`的变量赋值好，变量的值不会被改变的。把所有的变量都定义为`val`，一旦有一定的值，我们确定它的值不会再变。谎言！
+为什么要谈谈`final`、不可变的变量呢？因为可以把`final`直接翻译到Scala的`val`。我强烈推荐大家都尽量使用`val`；通过`val`可以写更容易了解的代码，一旦我们为某一个定义为`val`的变量赋值好，变量的值不会被改变的。把所有的变量都定义为`val`，一旦有一定的值，我们确定它的值不会再变。可惜，在JVM语言中，`final`本身不能保证不可变性。因为上面描述的`final`规则，我们还必须依赖不可变的数据结构。
 
 通过某一个算法 𝑓 把每一个元素映射另外一个元素
 
 通过某一个算法 𝑓 把每一个元素映射另外一个数组，然后把返回的数组里的每一个元素添加于结果
+-->
 
 # 三、高阶Scala
 
