@@ -7,7 +7,7 @@ excerpt: "。。。"
 hidden: true
 ---
 
-第一个Scala教程结束之后，我觉得大家对`for`循环和`map`、`flatMap`、`filter`的关系还有点模糊。其实，我也觉得大家不十分清楚`map`、`flatMap`、`filter`到底是什么样的函数，不太了解参数和返回值的类型。再加大家熟悉命令式编程语言，因此函数式的变换/影视、滤除比较难学的。我希望了看下面的图会解释一切。
+第一个Scala教程结束之后，我觉得大家对`for`循环和`map`、`flatMap`、`filter`的关系还有点模糊。其实，我也觉得大家不十分清楚`map`、`flatMap`、`filter`到底是什么样的函数，不太了解参数和返回值的类型。然而，大家熟悉命令式编程语言，因此函数式的变换/映射、滤除比较难学的。我希望了看下面的图会解释一切。
 
 ![](/assets/2020-11-10-scalatraining2/fmfm.png)
 
@@ -52,11 +52,12 @@ for (Integer n : numbers) {
 
 ![](/assets/2020-11-10-scalatraining2/fmfmt.png)
 
-要注意的是，即使图上是把完全不同的类型树（`IterableOps`即`Option`、`List`跟`Either`）混合起来，虽然不准确，但理目的是仔细地说明这三个又基础又常见的函数的目的和用法。再加，对初学者来说复杂继承结构
+要注意的是，即使图上是把完全不同的类型树（`IterableOps`的子类`Option`、`List`跟`Either`）混合起来；虽然不准确，但理由是仔细地说明这三个又基础又常见的函数的目的和用法。即使继承的结构比较复杂，`map`和`flatMap`的用法也完全一致：一旦熟悉，大家就凭直觉知道怎么用。因为`List`、`Option`、`Either`都是一种容器、都好像是由两个案例类[^1]而定义的，上面的图还所示的是`fold`；我要强调的“容器性“——`Option`、`List`、`Either`都并不是单值，要把它们变换成单值时必须管理所有可能的容器值。换句话说，我们必须把容器的两个案例值`fold`成一个值。
 
-参数是具体`Option`、`List`，但是`map`和`flatMap`是由`IterableOps`而定义、实现的，结果确实参数的类型是`IterableOnce`；）
+## `for`循环
 
-就算我们把多线环境的问题解决好，可变性的问题也还在。这个可变性的问题在于在考虑代码当中，我们不仅仅必须考虑逻辑，而且还需要考虑时间。
+
+[^1]: Haskell、ML把该结构叫做代数数据结构，Haskell、ML都用比较简洁句法来定义代数数据结构，对比一下`sealed trait O[+A]; case class S[A](a: A) extends O[A]; case object N extends O[Nothing]`和`data O a = S a | N`。
 
 <!--
 且十分正常。对吧？呵呵，得看情况，更具体地说，在多线情况下上面的代码会出race condition。该race condition会被`numbers`数组同时变、读取引起的。那么，Java包括一个比较有意思的关键词，即`final`。大家都知道定义为`final`代表着变量的值是不可变的，那么不可变的变量怎么能调用类似于`add`的函数呢？其实，在Java，更正确地说JVM，把`final`定义为“指针”是不可变的，而指针所指的实例不是因为`final`而受到任何限制的。
