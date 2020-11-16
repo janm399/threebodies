@@ -8,4 +8,6 @@ _site
 vendor
 .DS_Store
 *.s#*
+target
+.idea
 

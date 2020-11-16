@@ -9,7 +9,7 @@ hidden: true
 
 第一个Scala教程结束之后，我觉得大家对`for`循环和`map`、`flatMap`、`filter`的关系还有点模糊。其实，我也觉得大家不十分清楚`map`、`flatMap`、`filter`到底是什么样的函数，不太了解参数和返回值的类型。然而，大家熟悉命令式编程语言，因此函数式的变换/映射、滤除比较难学的。我希望了看下面的图会解释一切。
 
-![](/assets/2020-11-10-scalatraining2/fmfm.png)
+![](/assets/2020-11-20-scalatraining2/fmfm.png)
 
 很明显的，第一个操作是滤除——`filter`、第二个是映射——`map`、第三个是`flatMap`。即使我没把变量的类型定义好，但是可以看出`a`和`A`都是一种数组，更确切地说可以从头到尾把每一个元素都读取，即Scala所定义`Iterable[+A]`的子类。那么，从来没遇到函数式的编程语言的人会怎么理解这三个函数呢？我以为上面的图标太明显的，并不需要补充解释；大家竟然不了解`map`、`flatMap`、`filter`参数的类型要求，也不太清楚返回值是怎么算出的。
 
@@ -50,12 +50,36 @@ for (Integer n : numbers) {
 
 上面的代码是很容易了解的，而且是大学CS教程中很常见的代码。每一个命令都很明显地表示它的目的，很明显地表示它的输入、输出；虽然有点啰嗦，但是容易了解。只不过大部分的Scala源码所使用不是上述的命令式的方法，而使用函数式的方法。`filter`、`map`、`flatMap`的概念虽然很容易了解，但是实现时遇到些问题。学会了基本的概念、算法过后，下一步要学习哪些类型包括上述的特殊函数，而且这三个函数的具体用途是什么。最常见类型是`Option`、`List`、`Either`，因此我们是从这三个具体类型开始学习的。下面的图所解释的是*具体*`map`和`flatMap`的用法。
 
-![](/assets/2020-11-10-scalatraining2/fmfmt.png)
+![](/assets/2020-11-20-scalatraining2/fmfmt.png)
 
 要注意的是，即使图上是把完全不同的类型树（`IterableOps`的子类`Option`、`List`跟`Either`）混合起来；虽然不准确，但理由是仔细地说明这三个又基础又常见的函数的目的和用法。即使继承的结构比较复杂，`map`和`flatMap`的用法也完全一致：一旦熟悉，大家就凭直觉知道怎么用。因为`List`、`Option`、`Either`都是一种容器、都好像是由两个案例类[^1]而定义的，上面的图还所示的是`fold`；我要强调的“容器性“——`Option`、`List`、`Either`都并不是单值，要把它们变换成单值时必须管理所有可能的容器值。换句话说，我们必须把容器的两个案例值`fold`成一个值。
 
 ## `for`循环
+{% highlight Scala linenos %}
+val maybeInt: Option[Int] = Some(1)
+val listInt: List[Int] = List(1, 2, 3, 4, 5)
 
+val _ for {
+  int <- maybeInt
+} yield int * 2
+
+val _ = for {
+  int <- maybeInt
+  if int > 10
+} yield int * 2
+
+val _ = for {
+  a <- listInt
+  b <- listInt
+  if a < 5 && b > 1
+} yield a * b
+{% endhighlight %}
+
+{% highlight Scala linenos %}
+maybeInt.withFilter(int => int > 10).map(int => int * 2)
+
+listInt.flatMap(a => listInt.withFilter(b => b > 1 && a < 5).map(b => a * b))
+{% endhighlight %}
 
 [^1]: Haskell、ML把该结构叫做代数数据结构，Haskell、ML都用比较简洁句法来定义代数数据结构，对比一下`sealed trait O[+A]; case class S[A](a: A) extends O[A]; case object N extends O[Nothing]`和`data O a = S a | N`。
 
