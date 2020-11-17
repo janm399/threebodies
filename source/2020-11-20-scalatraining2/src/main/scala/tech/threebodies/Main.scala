@@ -31,7 +31,7 @@ object Maybe {
 object Main {
 
   def main(args: Array[String]): Unit = {
-    val maybeInt: Maybe[Int] = Maybe.Some(1)
+    val maybeInt: Option[Int] = Some(1)
     val listInt: List[Int] = List(1, 2, 3, 4, 5)
 
     val _ = for {
@@ -42,9 +42,7 @@ object Main {
 
     val _ = for {
       a <- maybeInt
-      b <- maybeInt
-      //if int > 10
-    } yield a * b
+    } yield a * 5
 
   }
 

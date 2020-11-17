@@ -55,30 +55,70 @@ for (Integer n : numbers) {
 要注意的是，即使图上是把完全不同的类型树（`IterableOps`的子类`Option`、`List`跟`Either`）混合起来；虽然不准确，但理由是仔细地说明这三个又基础又常见的函数的目的和用法。即使继承的结构比较复杂，`map`和`flatMap`的用法也完全一致：一旦熟悉，大家就凭直觉知道怎么用。因为`List`、`Option`、`Either`都是一种容器、都好像是由两个案例类[^1]而定义的，上面的图还所示的是`fold`；我要强调的“容器性“——`Option`、`List`、`Either`都并不是单值，要把它们变换成单值时必须管理所有可能的容器值。换句话说，我们必须把容器的两个案例值`fold`成一个值。
 
 ## `for`循环
+首先，我们探讨“传统”的编程语言中的`for`循环。一如所料，编译器将`for`循环编译成（用着Intel x86_64汇编语言的句法）`add, cmp, jne`的命令顺序。
+
+{% highlight C++ linenos %}
+for (int i = 0; i < 100; i++) {
+    // A
+    ...
+} 
+// B
+{% endhighlight %}
+
+{% highlight asm linenos %}
+        xor     ebx, ebx            // int i = 0
+.L2:                                // A
+        ...
+        add     ebx, 1              // i++
+        cmp     ebx, 100            // temp = i == 100
+        jne     .L2                 // if (!temp) goto .L2
+// B
+{% endhighlight %}
+
+{% highlight Rust linenos %}
+for n in 0..100 {
+    // A
+    ...
+}
+{% endhighlight %}
+
+{% highlight asm linenos %}
+        xor     ebp, ebp            // n = 0
+.L2:
+        // A
+        ...
+        add     ebp, 1              // n++
+        cmp     ebp, 100            // temp = i == 100
+        jne     .L2                 // if (!temp) goto .L2
+// B
+{% endhighlight %}
+
+要知道Scala的`for`循环并不是“传统”的循环，
+
 {% highlight Scala linenos %}
 val maybeInt: Option[Int] = Some(1)
-val listInt: List[Int] = List(1, 2, 3, 4, 5)
+val integers: List[Int] = List(1, 2, 3, 4, 5)
 
-val _ for {
-  int <- maybeInt
-} yield int * 2
+val a for {
+  x <- maybeInt
+} yield x * 2
 
-val _ = for {
-  int <- maybeInt
-  if int > 10
-} yield int * 2
+val b = for {
+  x <- maybeInt
+  if x > 10
+} yield x * 2
 
-val _ = for {
-  a <- listInt
-  b <- listInt
+val c = for {
+  a <- integers
+  b <- integers
   if a < 5 && b > 1
 } yield a * b
 {% endhighlight %}
 
 {% highlight Scala linenos %}
-maybeInt.withFilter(int => int > 10).map(int => int * 2)
-
-listInt.flatMap(a => listInt.withFilter(b => b > 1 && a < 5).map(b => a * b))
+maybeInt.map(x => x * 2)
+maybeInt.withFilter(x => x > 10).map(x => x * 2)
+integers.flatMap(a => integers.withFilter(b => b > 1 && a < 5).map(b => a * b))
 {% endhighlight %}
 
 [^1]: Haskell、ML把该结构叫做代数数据结构，Haskell、ML都用比较简洁句法来定义代数数据结构，对比一下`sealed trait O[+A]; case class S[A](a: A) extends O[A]; case object N extends O[Nothing]`和`data O a = S a | N`。
