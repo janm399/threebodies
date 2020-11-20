@@ -57,6 +57,8 @@ for (Integer n : numbers) {
 ## `for`循环
 首先，我们探讨“传统”的编程语言中的`for`循环。一如所料，编译器将`for`循环编译成（用着Intel x86_64汇编语言的句法）`add, cmp, jne`的命令顺序。
 
+
+
 {% highlight C++ linenos %}
 for (int i = 0; i < 100; i++) {
     // A
@@ -76,21 +78,60 @@ for (int i = 0; i < 100; i++) {
 {% endhighlight %}
 
 {% highlight Rust linenos %}
-for n in 0..100 {
+for i in 0..100 {
     // A
     ...
 }
 {% endhighlight %}
 
 {% highlight asm linenos %}
-        xor     ebp, ebp            // n = 0
+        xor     ebp, ebp            // i = 0
 .L2:
         // A
         ...
-        add     ebp, 1              // n++
+        add     ebp, 1              // i++
         cmp     ebp, 100            // temp = i == 100
         jne     .L2                 // if (!temp) goto .L2
 // B
+{% endhighlight %}
+
+{% highlight Rust linenos %}
+for i in 0..<100 {
+    // A
+    ...
+}
+// B
+{% endhighlight %}
+
+{% highlight asm linenos %}
+        xor     r12d, r12d          // i = 0
+.L2:
+        // A
+        lea     r12, [r12 + 1]      // i++
+        cmp     r12, 100            // temp = i == 100
+        jne     .L2                 // if (!temp) goto .L2
+// B
+{% endhighlight %}
+
+{% highlight Scala linenos %}
+for (i <- 0 until 100) {
+  // A
+}
+{% endhighlight %}
+
+{% highlight Scala linenos %}
+iconst_0            // 0                        |
+invokevirtual #67   //                          | intWrapper(0)
+bipush 100          // RichInt(0), 100          |
+invokevirtual #71   //                          | RichInt(0).until(100)
+invokedynamic #89   // Range(0, 100), #89-ret
+invokevirtual #95   //                          | Range(0, 100).foreach(I => Unit)
+...                 // Unit
+
+#67: scala.Predef.intWrapper (I)RichInt
+#71: scala.runtime.RichInt.until (RichInt, Int)Range
+#89: <anonymous> (I)V { // A }
+#95: Range.foreach ((I)V)V
 {% endhighlight %}
 
 要知道Scala的`for`循环并不是“传统”的循环，

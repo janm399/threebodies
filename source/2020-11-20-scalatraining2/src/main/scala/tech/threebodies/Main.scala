@@ -33,6 +33,10 @@ object Main {
   def main(args: Array[String]): Unit = {
     val maybeInt: Option[Int] = Some(1)
     val listInt: List[Int] = List(1, 2, 3, 4, 5)
+    val range = 0 until 100
+    for (i <- range) {
+      println(i)
+    }
 
     val _ = for {
       a <- listInt
