@@ -55,9 +55,7 @@ for (Integer n : numbers) {
 要注意的是，即使图上是把完全不同的类型树（`IterableOps`的子类`Option`、`List`跟`Either`）混合起来；虽然不准确，但理由是仔细地说明这三个又基础又常见的函数的目的和用法。即使继承的结构比较复杂，`map`和`flatMap`的用法也完全一致：一旦熟悉，大家就凭直觉知道怎么用。因为`List`、`Option`、`Either`都是一种容器、都好像是由两个案例类[^1]而定义的，上面的图还所示的是`fold`；我要强调的“容器性“——`Option`、`List`、`Either`都并不是单值，要把它们变换成单值时必须管理所有可能的容器值。换句话说，我们必须把容器的两个案例值`fold`成一个值。
 
 ## `for`循环
-首先，我们探讨“传统”的编程语言中的`for`循环。一如所料，编译器将`for`循环编译成（用着Intel x86_64汇编语言的句法）`add, cmp, jne`的命令顺序。
-
-
+首先，我们探讨“传统”的编程语言中的`for`循环。一如所料，编译器将`for`循环编译成（用着Intel x86_64汇编语言的句法）`mov, add, cmp, jne`——初始化、增量、对比、跳转——的命令顺序。这里我们不考虑一定编译时优化，例如循环展开、SIMD命令等等，主要的是探讨循环的最基本的原则。
 
 {% highlight C++ linenos %}
 for (int i = 0; i < 100; i++) {
@@ -68,15 +66,40 @@ for (int i = 0; i < 100; i++) {
 {% endhighlight %}
 
 {% highlight asm linenos %}
-        xor     ebx, ebx            // int i = 0
-.L2:                                // A
+        xor     ebx, ebx    // int i = 0
+.L1:                        // A
         ...
-        add     ebx, 1              // i++
-        cmp     ebx, 100            // temp = i == 100
-        jne     .L2                 // if (!temp) goto .L2
+        add     ebx, 1      // i++
+        cmp     ebx, 100    // temp = i == 100
+        jne     .L1         // if (!temp) goto .L2
 // B
 {% endhighlight %}
 
+那么，从原则看来，Java编译器跟C++编译器所生产的机器命令一致。不过除别在于Java虚拟器是所谓栈式器，而其余的处理器包括x86_64、ARM、AVR、PIC等等都是寄存器式。你可以将栈理解为“无限的”、有序的寄存器集合。
+
+{% highlight Java linenos %}
+for (int i = 0; i < 100; i++) {
+    // A
+    ...
+} 
+// B
+{% endhighlight %}
+
+{% highlight asm linenos %}
+        iconst_0            // 0                        | 
+        istore_1            //                          | (local) i = 0
+        iload_1             // 0                        | 
+1:
+        bipush 100          // 0, 100                   |
+        if_icmpge 2 (+16)   //                          | if (100 >= 100) goto 2
+        // A
+        iinc 1 by 1         //                          | i++
+        goto 1 (-16)        //                          | goto 1
+2:      // B
+{% endhighlight %}
+
+
+<!--
 {% highlight Rust linenos %}
 for i in 0..100 {
     // A
@@ -112,6 +135,9 @@ for i in 0..<100 {
         jne     .L2                 // if (!temp) goto .L2
 // B
 {% endhighlight %}
+-->
+
+无论是栈式处理器还是寄存器式处理器，原则上`for`循环都一致。那么，Scala的`for`循环完全不同。它确实并不是一种循环，Scala编译器以并不会把它编译成“初始化、增量、对比、跳转”这条命令顺序。Scala将`for`理解为句法糖，类似于Haskell的`do`句法糖。因此，Scala编译器会将`for`编译成调用`map`或者`foreach`、`flatMap`、`filter`方法。
 
 {% highlight Scala linenos %}
 for (i <- 0 until 100) {
@@ -120,13 +146,13 @@ for (i <- 0 until 100) {
 {% endhighlight %}
 
 {% highlight Scala linenos %}
-iconst_0            // 0                        |
-invokevirtual #67   //                          | intWrapper(0)
-bipush 100          // RichInt(0), 100          |
-invokevirtual #71   //                          | RichInt(0).until(100)
-invokedynamic #89   // Range(0, 100), #89-ret
-invokevirtual #95   //                          | Range(0, 100).foreach(I => Unit)
-...                 // Unit
+        iconst_0            // 0                        |
+        invokevirtual #67   //                          | intWrapper(0)
+        bipush 100          // RichInt(0), 100          |
+        invokevirtual #71   //                          | RichInt(0).until(100)
+        invokedynamic #89   // Range(0, 100), #89-ret
+        invokevirtual #95   //                          | Range(0, 100).foreach(I => Unit)
+        ...                 // Unit
 
 #67: scala.Predef.intWrapper (I)RichInt
 #71: scala.runtime.RichInt.until (RichInt, Int)Range
@@ -134,7 +160,12 @@ invokevirtual #95   //                          | Range(0, 100).foreach(I => Uni
 #95: Range.foreach ((I)V)V
 {% endhighlight %}
 
-要知道Scala的`for`循环并不是“传统”的循环，
+也就是说`for (i <- 0 until 100) println(i)`确实被编译成`intWrapper(0).until(100).foreach(x => println(x))`。`intWrapper(0).until(100)`是`0 until 100`通过Implicit Resolution所生产的，接下来的`foreach`是不包括`yield`的`for`句法糖的最终结果。关键词`yield`控制句法糖所生产的最终调用的方法：没有`yield`的话，最终调用的方法是`foreach`（因此，`for`表达式的返回类型是`Unit`，返回值是`()`）；有`yield`的话，最终调用的方法是`map`（因此，`for`表达式的返回值是`map`所返回的值）。
+
+{% highlight Scala linenos %}
+for (i <- 0 until 100) yield i * 2
+{% endhighlight %}
+
 
 {% highlight Scala linenos %}
 val maybeInt: Option[Int] = Some(1)
