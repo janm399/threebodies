@@ -66,16 +66,16 @@ for (int i = 0; i < 100; i++) {
 {% endhighlight %}
 
 {% highlight asm linenos %}
-        xor     ebx, ebx    // int i = 0
+    xor     ebx, ebx    // int i = 0
 .L1:                        // A
-        ...
-        add     ebx, 1      // i++
-        cmp     ebx, 100    // temp = i == 100
-        jne     .L1         // if (!temp) goto .L2
+    ...
+    add     ebx, 1      // i++
+    cmp     ebx, 100    // temp = i == 100
+    jne     .L1         // if (!temp) goto .L2
 // B
 {% endhighlight %}
 
-那么，从原则看来，Java编译器跟C++编译器所生产的机器命令一致。不过除别在于Java虚拟器是所谓栈式器，而其余的处理器包括x86_64、ARM、AVR、PIC等等都是寄存器式。你可以将栈理解为“无限的”、有序的寄存器集合。
+那么，从原则看来，Java编译器跟C++编译器所生产的机器命令一致。不过除别在于Java虚拟机是所谓栈式器，而其余的处理器包括x86_64、ARM、AVR、PIC等等都是寄存器式。你可以将栈理解为“无限的”、有序的寄存器集合。
 
 {% highlight Java linenos %}
 for (int i = 0; i < 100; i++) {
@@ -86,16 +86,16 @@ for (int i = 0; i < 100; i++) {
 {% endhighlight %}
 
 {% highlight asm linenos %}
-        iconst_0            // 0                        | 
-        istore_1            //                          | (local) i = 0
-        iload_1             // 0                        | 
+    iconst_0            // 0                        | 
+    istore_1            //                          | (local) i = 0
+    iload_1             // 0                        | 
 1:
-        bipush 100          // 0, 100                   |
-        if_icmpge 2 (+16)   //                          | if (100 >= 100) goto 2
-        // A
-        iinc 1 by 1         //                          | i++
-        goto 1 (-16)        //                          | goto 1
-2:      // B
+    bipush 100          // 0, 100                   |
+    if_icmpge 2 (+16)   //                          | if (100 >= 100) goto 2
+    // A
+    iinc 1 by 1         //                          | i++
+    goto 1 (-16)        //                          | goto 1
+2:  // B
 {% endhighlight %}
 
 
@@ -145,14 +145,14 @@ for (i <- 0 until 100) {
 }
 {% endhighlight %}
 
-{% highlight Scala linenos %}
-        iconst_0            // 0                        |
-        invokevirtual #67   //                          | intWrapper(0)
-        bipush 100          // RichInt(0), 100          |
-        invokevirtual #71   //                          | RichInt(0).until(100)
-        invokedynamic #89   // Range(0, 100), #89-ret
-        invokevirtual #95   //                          | Range(0, 100).foreach(I => Unit)
-        ...                 // Unit
+{% highlight asm linenos %}
+    iconst_0            // 0                        |
+    invokevirtual #67   //                          | intWrapper(0)
+    bipush 100          // RichInt(0), 100          |
+    invokevirtual #71   //                          | RichInt(0).until(100)
+    invokedynamic #89   // Range(0, 100), #89-ret   |
+    invokevirtual #95   //                          | Range(0, 100).foreach(I => Unit)
+    ...                 // Unit
 
 #67: scala.Predef.intWrapper (I)RichInt
 #71: scala.runtime.RichInt.until (RichInt, Int)Range
@@ -162,36 +162,80 @@ for (i <- 0 until 100) {
 
 也就是说`for (i <- 0 until 100) println(i)`确实被编译成`intWrapper(0).until(100).foreach(x => println(x))`。`intWrapper(0).until(100)`是`0 until 100`通过Implicit Resolution所生产的，接下来的`foreach`是不包括`yield`的`for`句法糖的最终结果。关键词`yield`控制句法糖所生产的最终调用的方法：没有`yield`的话，最终调用的方法是`foreach`（因此，`for`表达式的返回类型是`Unit`，返回值是`()`）；有`yield`的话，最终调用的方法是`map`（因此，`for`表达式的返回值是`map`所返回的值）。
 
-{% highlight Scala linenos %}
+<table class="rouge-table">
+<tr>
+    <th>循环句法糖</th>
+    <th>编译的结果</th>
+</tr>
+<tr>
+    <td>
+{% highlight Scala %}
 for (i <- 0 until 100) yield i * 2
 {% endhighlight %}
-
-
-{% highlight Scala linenos %}
-val maybeInt: Option[Int] = Some(1)
-val integers: List[Int] = List(1, 2, 3, 4, 5)
-
-val a for {
-  x <- maybeInt
-} yield x * 2
-
-val b = for {
-  x <- maybeInt
-  if x > 10
-} yield x * 2
-
-val c = for {
-  a <- integers
-  b <- integers
+    </td>
+    <td>
+{% highlight Scala %}
+(0 until 100).map(i => i * 2)
+{% endhighlight %}
+    </td>
+</tr>
+<tr>
+    <td>
+{% highlight Scala %}
+for {
+  i <- 0 until 100
+  if i > 100
+} yield i * 2
+{% endhighlight %}
+    </td>
+    <td>
+{% highlight Scala %}
+(0 until 100)
+  .withFilter(i => i > 100)
+  .map(i => i * 2)
+ 
+{% endhighlight %}
+    </td>
+</tr>
+<tr>
+    <td>
+{% highlight Scala %}
+for {
+  a <- 0 until 10
+  b <- 1 until 20
   if a < 5 && b > 1
 } yield a * b
+ 
+{% endhighlight %}
+    </td>
+    <td>
+{% highlight Scala %}
+(0 until 10)
+  .flatMap { a => 
+    (1 until 20)
+      .withFilter(b => b > 1 && a < 5)
+      .map(b => a * b)
+  } 
+{% endhighlight %}
+    </td>
+</tr>
+</table>
+
+上面的表所示的编译器如何将句法糖编译非句法糖的代码；因为最终生产的字节码只能依靠Java虚拟机而执行，Scala编译器所输出的字节码只能依靠普遍方法调用。*循环本身的算法必须实现在`map`、`flatMap`、`foreach`等的方法*。作为一个例子，下面`List.foreach`的远吗很明显地表示循环：
+
+{% highlight Scala %}
+@inline final override def foreach[U](f: A => U): Unit = {
+  var these = this
+  while (!these.isEmpty) {
+    f(these.head)
+    these = these.tail
+  }
+}
 {% endhighlight %}
 
-{% highlight Scala linenos %}
-maybeInt.map(x => x * 2)
-maybeInt.withFilter(x => x > 10).map(x => x * 2)
-integers.flatMap(a => integers.withFilter(b => b > 1 && a < 5).map(b => a * b))
-{% endhighlight %}
+## `for`循环句法糖的好处
+
+
 
 [^1]: Haskell、ML把该结构叫做代数数据结构，Haskell、ML都用比较简洁句法来定义代数数据结构，对比一下`sealed trait O[+A]; case class S[A](a: A) extends O[A]; case object N extends O[Nothing]`和`data O a = S a | N`。
 
@@ -220,31 +264,3 @@ numbers.push_back(6);   // 编译时报错：*const* std::vector<int> 不包含�
 
 通过某一个算法 𝑓 把每一个元素映射另外一个数组，然后把返回的数组里的每一个元素添加于结果
 -->
-
-# 三、高阶Scala
-
-# 四、极高阶Scala
-
-# 五、总结
-- 😐 模式匹配
-- 🙁 泛型类、包括标准库中`List`、`Option`；标准库的常用方法`map`、`flatMap`、`filter`
-- ☹️ 有着两个（以上）类型参数的泛型类、比如标准库中`Either`
-- 😬 `for`，包括`for`跟`map`、`flatMap`、`filter`的关系
-- 🤬 Pimp my library、implicits
-
-![](/assets/2020-11-03-intro/http4s-intro.png)
-
-<!---
-有时候有人问我“我很想学习一门函数式编程语言，比如Scala；我应该怎么样最好开始这个过程？”。不久以前我只有一个推荐：一边读一本书（比如Scala for the impatient或者XXX），一边在一个小项目实现刚刚学的内容。“太谢谢你了”，一般是最后一条消息，我以为他们开始自己的历程，没有任何再要问的问题。我一直以为Scala是好好学的语言，GitHub上面充满着处理各种各样的开源的项目，我以为文档太繁荣了，只要专心于学习，
-
-为了好好学习Scala、Haskell等等函数式语言我们先要好好学习什么是函数，什么把它好好利用；一旦完全了解函数式编程语言的关键概念是什么，立刻跑到仔细地学习标准库的机构、数据类型、标准函数等等。
-
-
-# 二、“Hello， world”、标准库…… 然后呢？
-
-
-大家都知道最基本的程序和大型的程序的差别很大很大
-
-
-我认为Scala，Haskell世界中的最大的问题就是怎么把上述的过程应用于建立有用的程序。
---->
