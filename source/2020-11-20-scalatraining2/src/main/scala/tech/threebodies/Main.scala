@@ -38,6 +38,10 @@ object Main {
       println(i)
     }
 
+    for {
+      i <- listInt
+    } println(i)
+
     val _ = for {
       a <- listInt
       b <- listInt

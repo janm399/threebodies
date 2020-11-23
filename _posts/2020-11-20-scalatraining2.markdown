@@ -234,7 +234,7 @@ for {
 {% endhighlight %}
 
 ## `for`循环句法糖的好处
-
+好像传统的`for`循环所生产的机器命令很简洁；这简洁也包括Java虚拟机的命令。反而Scala好像不支持`for`循环，而是通过`while`循环·来模拟`for`循环。不过，从底层命令来看，`for`和`while`没有任何区别，二者都是通过判断一个条件来算出专挑的目的。那么，虽然理论上`for`和`while`没有任何区别，但是Scala的`for`式方法一定比传统`for`慢得多；比传统`for`循环要通过更多`INVOKEVIRTUAL`命令而执行。简单来说`INVOKEVIRTUAL`命令会通过虚拟方法表找到具体方法来调用。
 
 
 [^1]: Haskell、ML把该结构叫做代数数据结构，Haskell、ML都用比较简洁句法来定义代数数据结构，对比一下`sealed trait O[+A]; case class S[A](a: A) extends O[A]; case object N extends O[Nothing]`和`data O a = S a | N`。
