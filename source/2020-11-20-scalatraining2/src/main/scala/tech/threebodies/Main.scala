@@ -35,7 +35,7 @@ object Main {
   } println(i)
 
   def main(args: Array[String]): Unit = {
-    val maybeInt: Option[Int] = Some(1)
+    val maybeInt = Maybe.Some(1)
     val listInt: List[Int] = List(1, 2, 3, 4, 5)
     val range = 0 until 100
     for (i <- range) {
@@ -51,7 +51,7 @@ object Main {
 
     val _ = for {
       a <- maybeInt
-    } yield a * 5
+    } println(a)
   }
 
 }
