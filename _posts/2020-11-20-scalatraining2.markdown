@@ -55,7 +55,7 @@ for (Integer n : numbers) {
 要注意的是，即使图上是把完全不同的类型树（`IterableOps`的子类`Option`、`List`跟`Either`）混合起来；虽然不准确，但理由是仔细地说明这三个又基础又常见的函数的目的和用法。即使继承的结构比较复杂，`map`和`flatMap`的用法也完全一致：一旦熟悉，大家就凭直觉知道怎么用。因为`List`、`Option`、`Either`都是一种容器、都好像是由两个案例类[^1]而定义的，上面的图还所示的是`fold`；我要强调的“容器性“——`Option`、`List`、`Either`都并不是单值，要把它们变换成单值时必须管理所有可能的容器值。换句话说，我们必须把容器的两个案例值`fold`成一个值。
 
 ## `for`循环
-首先，我们探讨“传统”的编程语言中的`for`循环。一如所料，编译器将`for`循环编译成（用着Intel x86_64汇编语言的句法）`mov, add, cmp, jne`——初始化、增量、对比、跳转——的命令顺序。这里我们不考虑一定编译时优化，例如循环展开、SIMD命令等等，主要的是探讨循环的最基本的原则。
+首先，我们探讨“传统”的编程语言中的`for`循环。一如所料，编译器将`for`循环编译成（用着Intel x86_64汇编语言的句法）`mov, add, cmp, jne`——初始化、增量、条件判断、跳转——的命令顺序。这里我们不考虑一定编译时优化，例如循环展开、SIMD命令等等，主要的是探讨循环的最基本的原则。
 
 {% highlight C++ linenos %}
 for (int i = 0; i < 100; i++) {
@@ -137,7 +137,7 @@ for i in 0..<100 {
 {% endhighlight %}
 -->
 
-无论是栈式处理器还是寄存器式处理器，原则上`for`循环都一致。那么，Scala的`for`循环完全不同。它确实并不是一种循环，Scala编译器以并不会把它编译成“初始化、增量、对比、跳转”这条命令顺序。Scala将`for`理解为句法糖，类似于Haskell的`do`句法糖。因此，Scala编译器会将`for`编译成调用`map`或者`foreach`、`flatMap`、`filter`方法。
+无论是栈式处理器还是寄存器式处理器，原则上`for`循环都一致。那么，Scala的`for`循环完全不同。它确实并不是一种循环，Scala编译器以并不会把它编译成“初始化、增量、条件判断、跳转”这条命令顺序。Scala将`for`理解为句法糖，类似于Haskell的`do`句法糖。因此，Scala编译器会将`for`编译成调用`map`或者`foreach`、`flatMap`、`filter`方法。
 
 {% highlight Scala linenos %}
 for (i <- 0 until 100) {
@@ -234,10 +234,44 @@ for {
 {% endhighlight %}
 
 ## `for`循环句法糖的好处
-好像传统的`for`循环所生产的机器命令很简洁；这简洁也包括Java虚拟机的命令。反而Scala好像不支持`for`循环，而是通过`while`循环·来模拟`for`循环。不过，从底层命令来看，`for`和`while`没有任何区别，二者都是通过判断一个条件来算出专挑的目的。那么，虽然理论上`for`和`while`没有任何区别，但是Scala的`for`式方法一定比传统`for`慢得多；比传统`for`循环要通过更多`INVOKEVIRTUAL`命令而执行。简单来说`INVOKEVIRTUAL`命令会通过虚拟方法表找到具体方法来调用。
+好像传统的`for`循环所生产的机器命令很简洁；这简洁也包括Java虚拟机的命令。反而Scala好像不支持`for`循环，而是通过`while`循环·来模拟`for`循环。不过，从底层命令来看，`for`和`while`没有任何区别，二者都是通过判断一个条件来算出专挑的目的。那么，虽然理论上`for`和`while`没有任何区别，但是Scala的`for`式方法一定比传统`for`慢得多；比传统`for`循环要通过更多`INVOKEVIRTUAL`命令而执行。
+
+### 编译时的优化
+大部分的`map`、`flatMap`等等方法有`@inline`注释，该注释（和`-opt:l:inline`、`-opt-inline-from:**`编译器选项）布置编所谓“inlining”编译时的优化。在该优化下，编译器会将方法调用（即`INVOKEVIRTUAL`命令）代替成被调用方法的方法体。因此，
+`for (i <- 0 until 100) { /* A */ } /* B */`会被编译成
+
+{% highlight asm linenos %}
+8: 
+    aload_1                 // 初始化
+    invokevirtual #24       // 判断条件
+    ifne 53                 // 专挑（循环结束）
+    aload_1                 // 执行循环体
+    invokevirtual #28       // .
+    /* A */                 // .
+    aload_1                 // 增量
+    invokevirtual #52       // .
+    checkcast #20 
+    astore_1
+    goto 8                  // 专挑（再判断条件）
+53:                         // 循环后面的命令
+    /* B */
+
+#24 scala.collection.immutable.List.isEmpty 
+#28 scala.collection.immutable.List.head 
+#52 scala.collection.immutable.List.tail
+#20 scala.collection.immutable.List
+{% endhighlight %}
+
+你可能还觉得上面的字节码还太复杂了，不过循环的基本原则（初始化，增量/变化，条件判断，专挑）很容易看得出来。
+
+### Scala for 多用性、可扩展性
+Scala`for`表达式（不要再把它叫做“循环”呢）的关键概念是通过句法糖实现下面的变换：
+
+* 将`<-`代替成`flatMap`
 
 
-[^1]: Haskell、ML把该结构叫做代数数据结构，Haskell、ML都用比较简洁句法来定义代数数据结构，对比一下`sealed trait O[+A]; case class S[A](a: A) extends O[A]; case object N extends O[Nothing]`和`data O a = S a | N`。
+
+[^1] Haskell、ML把该结构叫做代数数据结构，Haskell、ML都用比较简洁句法来定义代数数据结构，对比一下`sealed trait O[+A]; case class S[A](a: A) extends O[A]; case object N extends O[Nothing]`和`data O a = S a | N`。
 
 <!--
 且十分正常。对吧？呵呵，得看情况，更具体地说，在多线情况下上面的代码会出race condition。该race condition会被`numbers`数组同时变、读取引起的。那么，Java包括一个比较有意思的关键词，即`final`。大家都知道定义为`final`代表着变量的值是不可变的，那么不可变的变量怎么能调用类似于`add`的函数呢？其实，在Java，更正确地说JVM，把`final`定义为“指针”是不可变的，而指针所指的实例不是因为`final`而受到任何限制的。

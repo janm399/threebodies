@@ -22,7 +22,7 @@ lazy val root = (project in file("."))
       "-Ywarn-extra-implicit",
       "-Ywarn-unused:_",
       "-opt:l:inline",
-      "-opt-inline-from:**",
+      //"-opt-inline-from:**",
       "-Xprint:typer",
       "-P:bm4:no-filtering:y",
       "-P:bm4:no-map-id:n"
