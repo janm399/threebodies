@@ -1,5 +1,7 @@
 project(httpclientperf)
 cmake_minimum_required(VERSION 3.1)
+
+# This is a hack on a mac
 set(OPENSSL_ROOT_DIR /usr/local/Cellar/openssl@1.1/*)
 find_package(Boost COMPONENTS system REQUIRED)
 find_package(OpenSSL REQUIRED)

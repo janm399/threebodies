@@ -29,7 +29,7 @@ int main() {
   net::io_context ioc;
   // The SSL context is required, and holds certificates
   ssl::context ctx{ssl::context::tlsv12_client};
-  load_root_certificates(ctx);
+  ctx.load_verify_file("/etc/ssl/cert.pem");
   ctx.set_verify_mode(ssl::verify_peer);
   tcp::resolver resolver(ioc);
   beast::ssl_stream<beast::tcp_stream> stream(ioc, ctx);
