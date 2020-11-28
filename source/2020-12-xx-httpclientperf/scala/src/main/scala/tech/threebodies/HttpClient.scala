@@ -1,12 +1,15 @@
 package tech.threebodies
 
+import java.util.concurrent.TimeUnit
+
 import cats.effect.ConcurrentEffect
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.client.Client
 import sttp.client3._
 import sttp.client3.asynchttpclient.zio._
 import sttp.client3.httpclient.zio.HttpClientZioBackend
-import zio.{Has, Task, ZIO, ZLayer}
+import zio.{clock, Has, Task, ZIO, ZLayer}
+import zio.clock.Clock
 
 import scala.concurrent.ExecutionContext
 
@@ -43,7 +46,10 @@ object HttpClient {
     ZLayer.fromEffect(cb)
   }
 
-  def get(uri: Uri): ZIO[Has[Service], Throwable, String] =
-    ZIO.accessM(_.get.get(uri))
+  def get(uri: Uri): ZIO[Has[Service] with Clock, Throwable, RequestBenchmark] = for {
+    start    <- clock.currentTime(TimeUnit.MILLISECONDS)
+    response <- ZIO.accessM[Has[Service]](_.get.get(uri))
+    end      <- clock.currentTime(TimeUnit.MILLISECONDS)
+  } yield RequestBenchmark(uri, end - start, response.length.toLong)
 
 }

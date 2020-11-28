@@ -5,9 +5,11 @@
 #include <boost/beast/ssl.hpp>
 #include <boost/beast/version.hpp>
 #include <cstdlib>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <ostream>
 #include <string>
 
 #include "certificates.hpp"
@@ -18,13 +20,39 @@ namespace net = boost::asio;       // from <boost/asio.hpp>
 namespace ssl = boost::asio::ssl;  // from <boost/asio/ssl.hpp>
 using tcp = boost::asio::ip::tcp;  // from <boost/asio/ip/tcp.hpp>
 
-using namespace boost;
+using namespace std;  // so shoot me
+
+vector<string> getUris() {
+  ifstream uri_file("../uris.txt");
+  vector<string> result;
+  copy(istream_iterator<string>(uri_file), istream_iterator<string>(),
+       back_inserter(result));
+  return result;
+}
+
+struct request_benchmark {
+  string uri;
+  long elapsed_time;
+  long response_size;
+};
+
+struct run_requests {
+  vector<request_benchmark> responses;
+  long elapsed_time;
+
+  friend ostream& operator<<(ostream& os, const run_requests& p) {
+    sort(begin(p.responses), end(p.responses),
+         [](auto const& a, auto const& b) { return a.uri < b.uri; });
+
+    return os;
+  }
+};
 
 int main() {
   auto const host = "github.com";
   auto const port = "443";
   auto const target = "/robots.txt";
-  auto const version = 11;
+  auto const version = 11;  // HTTP version 1.1
 
   net::io_context ioc;
   // The SSL context is required, and holds certificates
@@ -58,7 +86,7 @@ int main() {
   http::read(stream, buffer, res);
 
   // Write the message to standard out
-  std::cout << res << std::endl;
+  cout << res << endl;
 
   // Gracefully close the stream
   beast::error_code ec;
