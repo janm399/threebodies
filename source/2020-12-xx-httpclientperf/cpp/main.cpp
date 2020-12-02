@@ -12,8 +12,6 @@
 #include <ostream>
 #include <string>
 
-#include "certificates.hpp"
-
 namespace beast = boost::beast;    // from <boost/beast.hpp>
 namespace http = beast::http;      // from <boost/beast/http.hpp>
 namespace net = boost::asio;       // from <boost/asio.hpp>
@@ -41,8 +39,8 @@ struct run_requests {
   long elapsed_time;
 
   friend ostream& operator<<(ostream& os, const run_requests& p) {
-    sort(begin(p.responses), end(p.responses),
-         [](auto const& a, auto const& b) { return a.uri < b.uri; });
+    // sort(begin(p.responses), end(p.responses),
+    //      [](auto const& a, auto const& b) { return a.uri < b.uri; });
 
     return os;
   }
