@@ -9,6 +9,6 @@ include_directories(${Boost_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR})
 link_directories(${Boost_LIBRARY_DIR})
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(main main.cpp)
+add_executable(main main.cpp session.cpp session.h)
 target_link_libraries( main ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
  
