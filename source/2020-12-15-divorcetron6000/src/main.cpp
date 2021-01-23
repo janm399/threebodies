@@ -2,7 +2,7 @@
 #include <U8g2lib.h>
 #include <MFRC522.h>
 #include <SPI.h>
-#include "binary.h"
+#include "resources.h"
 
 #define BUILTIN_LED 2
 #define LATCH_PIN 32
@@ -23,7 +23,7 @@ String tagText = "";
 bool programTag = false;
 bool programmerMode = false;
 
-void setup(void) {
+void setup() {
   pinMode(BUILTIN_LED, OUTPUT);
   pinMode(DATA_PIN, OUTPUT);
   pinMode(CLOCK_PIN, OUTPUT);
@@ -46,9 +46,9 @@ void setup(void) {
     WiFi.softAP("Divorcetron6000");
 
     server.on("/", HTTP_GET, [](){
-      String body;
-      if (programTag) body = "<p>*** “" + tagText + "”</p>";
-      server.send(200, "text/html", "<!DOCTYPE HTML><html><head><meta charset='utf-8'/><meta language='zh_CN'/></head><body><h1>NFC</h1><form action='/program' accept-charset='utf-8' method='post'><input type='text' name='text'/><input type='submit'/></form>" + body + "</body></html>");
+//      String body;
+//      if (programTag) body = "<p>*** “" + tagText + "”</p>";
+      server.send(200, "text/html", HtmlContent.home(tagText));
     });
 
     server.on("/program", HTTP_POST, [](){
@@ -56,7 +56,7 @@ void setup(void) {
         programTag = true;
         tagText = server.arg("text");
       }
-      server.sendHeader("Location", "/", true);
+      server.sendHeader("Location", "/?success=true", true);
       server.send(302, "text/plain", "");
     });
 
@@ -80,7 +80,7 @@ void readText(byte* buffer) {
   }
 }
 
-void writeText(String text) {
+void writeText(const String &text) {
   byte buffer[144];
   byte size = sizeof(buffer);
   memset(buffer, 0, size);
@@ -93,7 +93,7 @@ void writeText(String text) {
 }
 
 int counter = 0;
-void loop(void) {
+void loop() {
   byte buffer[144 + 2];
   memset(buffer, 0, sizeof(buffer));
 
