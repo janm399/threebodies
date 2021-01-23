@@ -1,0 +1,156 @@
+---
+layout: post
+title:  "Go"
+date:   2021-01-23 11:00:00 +0000
+categories: [Go]
+excerpt: "..."
+hidden: true
+---
+
+最近，我需要开发一个小程序，这个小程序要连接到使用UART接口的多个ESP32模块。我最熟悉的编程语言就是Scala，结果最初的版本是用Scala实现的。当时我只计划写出一个很基本
+的程序，基本上只要从`/dev/ttyUSB*`读取ESP32发的数据，然后使用PostgreSQL把读取的数据保存起来。而当时，ESP32模块只有输出，没有任何输入。ESP32的输出有两个不同
+的数据类型`session`和`data`，如下面单列所示。
+
+{% highlight linenos %}
+session   := '>' mode ':' device '@' sessionId '<'
+data      := '[' mac ']'
+
+mode      := [\w-]+
+device    := [\w-]+
+sessionId := \w+
+mac       := [\w:]+
+{% endhighlight %}
+
+协议使用四个特殊的字母（即`>`，`<`，`[`，`]`）的原因是ESP32发的输出包括日录数据；没有特殊的字母来分别日录和发出的数据会导致解码函数不必复杂。作为个例子，下面
+的单列所示的是具体的ESP32输出。
+
+{% highlight linenos %}
+rst:0x1 (POWERON_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:4
+load:0x3fff0034,len:7432
+load:0x40078000,len:14276
+load:0x40080400,len:4204
+entry 0x40080690
+I (29) boot: ESP-IDF 3.40100.200827 2nd stage bootloader
+I (29) boot: compile time 12:21:32
+I (29) boot: chip revision: 1
+I (33) boot_comm: chip revision: 1, min. bootloader chip revision: 0
+I (40) boot.esp32: SPI Speed      : 40MHz
+I (44) boot.esp32: SPI Mode       : DIO
+I (49) boot.esp32: SPI Flash Size : 4MB
+I (53) boot: Enabling RNG early entropy source...
+I (59) boot: Partition Table:
+I (62) boot: ## Label            Usage          Type ST Offset   Length
+I (70) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (77) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (85) boot:  2 factory          factory app      00 00 00010000 00100000
+I (92) boot: End of partition table
+I (96) boot_comm: chip revision: 1, min. application chip revision: 0
+I (103) esp_image: segment 0: paddr=0x00010020 vaddr=0x3f400020 size=0x1bc34 (113716) map
+I (151) esp_image: segment 1: paddr=0x0002bc5c vaddr=0x3ffb0000 size=0x03974 ( 14708) load
+I (157) esp_image: segment 2: paddr=0x0002f5d8 vaddr=0x40080000 size=0x00404 (  1028) load
+I (158) esp_image: segment 3: paddr=0x0002f9e4 vaddr=0x40080404 size=0x00634 (  1588) load
+I (168) esp_image: segment 4: paddr=0x00030020 vaddr=0x400d0020 size=0x74bd0 (478160) map
+I (339) esp_image: segment 5: paddr=0x000a4bf8 vaddr=0x40080a38 size=0x15584 ( 87428) load
+I (383) boot: Loaded app from partition at offset 0x10000
+I (383) boot: Disabling RNG early entropy source...
+I (383) cpu_start: Pro cpu up.
+I (387) cpu_start: Application information:
+I (392) cpu_start: Project name:     emitter
+I (397) cpu_start: App version:      ae63c2c-dirty
+I (402) cpu_start: Compile time:     Jan 23 2021 12:21:13
+I (408) cpu_start: ELF file SHA256:  12a86ac04e6d61ca...
+I (414) cpu_start: ESP-IDF:          3.40100.200827
+I (420) cpu_start: Starting app cpu, entry point is 0x40081278
+I (0) cpu_start: App cpu up.
+I (430) heap_init: Initializing. RAM available for dynamic allocation:
+I (437) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM
+I (443) heap_init: At 3FFB9390 len 00026C70 (155 KiB): DRAM
+I (449) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM
+I (456) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM
+I (462) heap_init: At 40095FBC len 0000A044 (40 KiB): IRAM
+I (468) cpu_start: Pro cpu start user code
+I (487) spi_flash: detected chip: generic
+I (487) spi_flash: flash io: dio
+I (488) cpu_start: Starting scheduler
+I (0) cpu_start: Starting scheduler on APP CPU.
+I (496) uart: queue free spaces: 5
+>blog:esp32-devkitc-v4:1231231<[00:14:22:04:25:37][00:14:22:04:25:32][00:14:22:04:24:37][00:14:22:04:22:37][00:14:22:04:23:37]...
+{% endhighlight %}
+
+使用特殊字母来分别日录和发出的数据的重要性是很容易看出来的。那么，用Scala来实现这样的程序并不难。只要找到合适的`/dev/ttyUSB*`（或者在macOS平台`/dev/cu.usb*`）的文件，然后在一个无限循环从该文件一字母一字母读取，分析ESP32的输出。怎么（同步地！）从某一个文件一字母一字母地读取数据？这不是典型使用`java.io.Reader.read()`或者`java.io.InputStream.read()`的例子吗？结果，我的最初结构就是依靠典型Java IO实现的。只不过要注意，`/dev/ttyUSB*`（`/dev/cu.usb*`）并不是普通的文件，不能实例一个`java.io.FileInputStream`对象，然后直接调用它的`read()`方法。原因是`/dev/ttyUSB*`需要通过C标准库的`tcsetattr`函数调用于合适`struct termios`（在`<termios.h>`C标准库定义的）来把UART接口的输出/输入配置好才能调用标准库的`read()/write()`函数来正常地读取/写入数据。好在JVM世界也有实现UART输出/输入的库，比如[JSerialComm](https://github.com/Fazecast/jSerialComm)。它的用法很简洁，而且它包含着返回`InputStream`和`OutputStream`的方法，一拿到`InputStream`或者`OutputStream`实例我们可以假装
+它是普通文件，再不需要管理UART的细节了。
+
+{% highlight Scala linenos %}
+val comPort    = SerialPort.getCommPort(serialPort)
+comPort.setBaudRate(115200)
+comPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 0, 0)
+comPort.openPort()
+val in     = comPort.getInputStream
+val reader = new InputStreamReader(in)
+{% endhighlight %}
+
+有了普通的、同步的`InputStreamReader`，实现一个有限状态机不难。具体的现实方法有很多，下面的单列所示的是其中一个。
+
+{% highlight Scala linenos %}
+def insert(rawMacData: RawMacData): Unit = ...
+
+final case class RawMacData(
+    mode: String,
+    deviceId: String,
+    sessionId: String,
+    mac: String,
+    ts: LocalDateTime
+)
+
+object RawMacData {
+  private val sessionStart   = '>'.toInt
+  private val sessionEnd     = '<'.toInt
+  private val macStart       = '['.toInt
+  private val macEnd         = ']'.toInt
+  private val nl             = '\n'.toInt
+  private val SessionPattern = """([\w-]+):([\w-]+)@(\w+)""".r
+
+  def apply(reader: Reader)(onData: RawMacData => Unit): Unit = {
+    @tailrec
+    def readMac(state: Int, mode: String, deviceId: String, sessionId: String, accumulator: String): Unit = {
+      (state, reader.read()) match {
+        ...
+        case (1, `macEnd`) if accumulator != null =>
+          onData(RawMacData(mode, deviceId, sessionId, accumulator, LocalDateTime.now()))
+          readMac(0, mode, deviceId, sessionId, "")
+        ...
+      }
+    }
+
+    @tailrec
+    def waitForSessionStart(state: Int, accumulator: String): Unit = {
+      (state, accumulator, reader.read()) match {
+        case (0, _, `sessionStart`) =>
+          waitForSessionStart(1, "")
+        case (1, SessionPattern(mode, deviceId, sessionId), `sessionEnd`) =>
+          log.info(s"Started session $sessionId from $deviceId")
+          readMac(0, mode, deviceId, sessionId, "")
+        ...
+      }
+    }
+
+    waitForSessionStart(0, "")
+  }
+
+}
+
+val reader = ...
+RawMacData(reader)(insert)
+{% endhighlight %}
+
+> 这里要注意呢！`Reader.read()`方法的类型好像是纯函数，但是把它调用的时候会导致非确定性的副作用。由于这个原因，调用`Reader.read()`方法的时候得加小心，上面的代码
+> 忽略异常，假装它是个纯函数。上面的代码我觉得是很适合的，很实用的方式。纯函数方法是依靠`IO`单子（monad）来实现的，假设Java是纯函数的语言/执行环境，那么`Reader.read()`
+> 的类型会是`IO<Int> Reader.read()`来表达`read()`方法的返回值不是具体读取的`Int`，而是一种过程，把过程运行后就会返回具体的`Int`值。关键概念在于什么时候
+> 才把`IO`执行呢？因为执行`IO`有可能会导致非确定性副作用，安全执行的时刻只有一个：当程序已经结束了。当然，具体的实现方法不那么严格（程序解释之后怎么可能执行任何
+> 命令，别说执行单子），有兴趣的人可以查看[IO Monad 设计浅析](https://scala.cool/2019/12/io_monad-1/)，[Cats](https://typelevel.org/cats/)，
+> 甚至典型纯函数语言[Haskell](https://www.haskell.org/)。
+
