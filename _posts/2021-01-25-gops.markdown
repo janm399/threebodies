@@ -154,3 +154,15 @@ RawMacData(reader)(insert)
 > 命令，别说执行单子），有兴趣的人可以查看[IO Monad 设计浅析](https://scala.cool/2019/12/io_monad-1/)，[Cats](https://typelevel.org/cats/)，
 > 甚至典型纯函数语言[Haskell](https://www.haskell.org/)。
 
+成功了吧？最初版版会顺利地连接到UART，收集，解析ESP32模块发的数据。不过缺乏管理断线的代码，不支持更复杂的协议，更重要的是不支持双行的协议。
+
+## 多平台性，异步性，更复杂协议
+把程序部署到x86和ARM64两个平台，要求程序支持多个ESP32模块，ESP32模块本身开始依靠双行的协议都强调了最初版本的缺点。我们从多平台性开始讲吧。第一个版本是用Scala实现的，结果它至少需要Java虚拟机来执行，但是执行的是同样的JAR（更正确地说，同样的Java字节码）。只要该JAR包含着所有依靠库，那么任何与编译器兼容的JVM能把它执行。我的开发环境使用的是线x86的OpenJDK 1.8；ARM64平台是[Raspberry Pi 4B](https://www.raspberrypi.org/products/raspberry-pi-4-model-b/)，我打算给它安装同样的JDK，只不过ARM64版本。一切都很顺利，我的Raspberry Pi跑着Ubuntu Server 20.10，果然`sudo apt-get install openjdk-8-jdk`也成功了。基础的准备做完后，我通过[sbt-assembly](https://github.com/sbt/sbt-assembly)生产所谓fat JAR（即包含着所有的依靠库的JAR），接下来把它部署到Raspberry Pi。`java -jar app.jar`竟然失败了！抛出的异象是"native image not found"，异象是因为[JSerialComm](https://github.com/Fazecast/jSerialComm)试图载入该平台的动态链接库（`so`，`dyld`，`dll`）但是默认不支持ARM64平台而引起的。这个问题不难解决，Raspberry Pi有所需要的开发工具（`gcc`），但是这样做的会导致。。。世界末日！// TODO
+
+我们从同步性开始讲：这个问题
+
+### 
+
+### Actors
+
+### 
